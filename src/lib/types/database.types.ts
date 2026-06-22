@@ -1,0 +1,177 @@
+// Auto-generated types from Supabase — regenerate with:
+//   npx supabase gen types typescript --project-id <ID> > src/lib/types/database.types.ts
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type TipoEvento =
+  | "RECEBIMENTO"
+  | "ENTREGA"
+  | "DEVOLUCAO_ORIGEM"
+  | "RETORNO";
+
+export type StatusOperacao = "EM_ANDAMENTO" | "FINALIZADA";
+
+export interface Database {
+  public: {
+    Tables: {
+      cidades: {
+        Row: {
+          id: string;
+          nome: string;
+          uf: string;
+          criada_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["cidades"]["Row"], "id" | "criada_em">;
+        Update: Partial<Database["public"]["Tables"]["cidades"]["Insert"]>;
+      };
+      galpoes: {
+        Row: {
+          id: string;
+          cidade_id: string;
+          nome: string;
+          endereco: string | null;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["galpoes"]["Row"], "id" | "criado_em">;
+        Update: Partial<Database["public"]["Tables"]["galpoes"]["Insert"]>;
+      };
+      bairros: {
+        Row: {
+          id: string;
+          cidade_id: string;
+          nome: string;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["bairros"]["Row"], "id" | "criado_em">;
+        Update: Partial<Database["public"]["Tables"]["bairros"]["Insert"]>;
+      };
+      transportadoras: {
+        Row: {
+          id: string;
+          nome: string;
+          regex_validacao: string | null;
+          ativo: boolean;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["transportadoras"]["Row"], "id" | "criado_em">;
+        Update: Partial<Database["public"]["Tables"]["transportadoras"]["Insert"]>;
+      };
+      colaboradores: {
+        Row: {
+          id: string;
+          galpao_id: string;
+          user_id: string;
+          nome: string;
+          cpf: string;
+          email: string;
+          papel: "admin" | "gerente" | "colaborador";
+          ativo: boolean;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["colaboradores"]["Row"], "id" | "criado_em">;
+        Update: Partial<Database["public"]["Tables"]["colaboradores"]["Insert"]>;
+      };
+      motoristas: {
+        Row: {
+          id: string;
+          galpao_id: string;
+          nome: string;
+          cpf: string | null;
+          cnh: string | null;
+          placa: string | null;
+          telefone: string | null;
+          ativo: boolean;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["motoristas"]["Row"], "id" | "criado_em">;
+        Update: Partial<Database["public"]["Tables"]["motoristas"]["Insert"]>;
+      };
+      rotas: {
+        Row: {
+          id: string;
+          galpao_id: string;
+          nome: string;
+          ativa: boolean;
+          criada_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["rotas"]["Row"], "id" | "criada_em">;
+        Update: Partial<Database["public"]["Tables"]["rotas"]["Insert"]>;
+      };
+      rota_bairros: {
+        Row: {
+          rota_id: string;
+          bairro_id: string;
+          ordem: number;
+        };
+        Insert: Database["public"]["Tables"]["rota_bairros"]["Row"];
+        Update: Partial<Database["public"]["Tables"]["rota_bairros"]["Row"]>;
+      };
+      operacoes: {
+        Row: {
+          id: string;
+          galpao_id: string;
+          transportadora_id: string;
+          tipo_evento: TipoEvento;
+          data: string;
+          colaborador_id: string;
+          status: StatusOperacao;
+          iniciada_em: string;
+          finalizada_em: string | null;
+        };
+        Insert: Omit<Database["public"]["Tables"]["operacoes"]["Row"], "id" | "status" | "iniciada_em">;
+        Update: Partial<Database["public"]["Tables"]["operacoes"]["Insert"]>;
+      };
+      bipagens: {
+        Row: {
+          id: string;
+          operacao_id: string;
+          rota_id: string;
+          motorista_id: string | null;
+          transportadora_id: string;
+          codigo: string;
+          tipo_evento: TipoEvento;
+          colaborador_id: string;
+          bipado_em: string;
+          override_aplicado: boolean;
+          sincronizado_em: string | null;
+        };
+        Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado">;
+        Update: Partial<Database["public"]["Tables"]["bipagens"]["Insert"]>;
+      };
+      configuracoes: {
+        Row: {
+          chave: string;
+          valor: string;
+          atualizado_em: string;
+          atualizado_por: string | null;
+        };
+        Insert: Omit<Database["public"]["Tables"]["configuracoes"]["Row"], "atualizado_em">;
+        Update: Partial<Database["public"]["Tables"]["configuracoes"]["Insert"]>;
+      };
+      auditoria: {
+        Row: {
+          id: string;
+          tipo: string;
+          descricao: string;
+          usuario_id: string | null;
+          dados: Json | null;
+          criado_em: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["auditoria"]["Row"], "id" | "criado_em">;
+        Update: never;
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: {
+      tipo_evento: TipoEvento;
+      status_operacao: StatusOperacao;
+    };
+  };
+}
