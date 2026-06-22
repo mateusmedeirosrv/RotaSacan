@@ -149,7 +149,12 @@ function CriarColaboradorForm({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id="papel" className="w-full">
-                <SelectValue placeholder="Selecione o papel" />
+                <SelectValue placeholder="Selecione o papel">
+                  {(value: string) =>
+                    PAPEIS.find((p) => p.value === value)?.label ??
+                    "Selecione o papel"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {PAPEIS.map((papel) => (
@@ -171,7 +176,12 @@ function CriarColaboradorForm({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id="galpao_id" className="w-full">
-                <SelectValue placeholder="Selecione o galpão" />
+                <SelectValue placeholder="Selecione o galpão">
+                  {(value: string) =>
+                    galpoes.find((g) => g.id === value)?.nome ??
+                    "Selecione o galpão"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {galpoes.map((galpao) => (
@@ -291,7 +301,12 @@ function EditarColaboradorForm({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id="papel" className="w-full">
-                <SelectValue placeholder="Selecione o papel" />
+                <SelectValue placeholder="Selecione o papel">
+                  {(value: string) =>
+                    PAPEIS.find((p) => p.value === value)?.label ??
+                    "Selecione o papel"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {PAPEIS.map((papel) => (
@@ -313,7 +328,12 @@ function EditarColaboradorForm({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id="galpao_id" className="w-full">
-                <SelectValue placeholder="Selecione o galpão" />
+                <SelectValue placeholder="Selecione o galpão">
+                  {(value: string) =>
+                    galpoes.find((g) => g.id === value)?.nome ??
+                    "Selecione o galpão"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {galpoes.map((galpao) => (

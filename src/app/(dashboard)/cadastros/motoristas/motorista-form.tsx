@@ -122,7 +122,12 @@ export function MotoristaFormDialog({
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="galpao_id" className="w-full">
-                    <SelectValue placeholder="Selecione o galpão" />
+                    <SelectValue placeholder="Selecione o galpão">
+                      {(value: string) =>
+                        galpoes.find((g) => g.id === value)?.nome ??
+                        "Selecione o galpão"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {galpoes.map((galpao) => (

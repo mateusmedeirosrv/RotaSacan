@@ -100,7 +100,14 @@ export function BairroFormDialog({
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="cidade_id" className="w-full">
-                    <SelectValue placeholder="Selecione a cidade" />
+                    <SelectValue placeholder="Selecione a cidade">
+                      {(value: string) => {
+                        const cidade = cidades.find((c) => c.id === value);
+                        return cidade
+                          ? `${cidade.nome} - ${cidade.uf}`
+                          : "Selecione a cidade";
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {cidades.map((cidade) => (
