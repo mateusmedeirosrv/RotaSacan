@@ -29,6 +29,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["cidades"]["Row"], "id" | "criada_em">;
         Update: Partial<Database["public"]["Tables"]["cidades"]["Insert"]>;
+        Relationships: [];
       };
       galpoes: {
         Row: {
@@ -40,6 +41,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["galpoes"]["Row"], "id" | "criado_em">;
         Update: Partial<Database["public"]["Tables"]["galpoes"]["Insert"]>;
+        Relationships: [];
       };
       bairros: {
         Row: {
@@ -50,6 +52,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["bairros"]["Row"], "id" | "criado_em">;
         Update: Partial<Database["public"]["Tables"]["bairros"]["Insert"]>;
+        Relationships: [];
       };
       transportadoras: {
         Row: {
@@ -61,6 +64,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["transportadoras"]["Row"], "id" | "criado_em">;
         Update: Partial<Database["public"]["Tables"]["transportadoras"]["Insert"]>;
+        Relationships: [];
       };
       colaboradores: {
         Row: {
@@ -76,6 +80,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["colaboradores"]["Row"], "id" | "criado_em">;
         Update: Partial<Database["public"]["Tables"]["colaboradores"]["Insert"]>;
+        Relationships: [];
       };
       motoristas: {
         Row: {
@@ -91,6 +96,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["motoristas"]["Row"], "id" | "criado_em">;
         Update: Partial<Database["public"]["Tables"]["motoristas"]["Insert"]>;
+        Relationships: [];
       };
       rotas: {
         Row: {
@@ -102,6 +108,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["rotas"]["Row"], "id" | "criada_em">;
         Update: Partial<Database["public"]["Tables"]["rotas"]["Insert"]>;
+        Relationships: [];
       };
       rota_bairros: {
         Row: {
@@ -111,6 +118,7 @@ export interface Database {
         };
         Insert: Database["public"]["Tables"]["rota_bairros"]["Row"];
         Update: Partial<Database["public"]["Tables"]["rota_bairros"]["Row"]>;
+        Relationships: [];
       };
       operacoes: {
         Row: {
@@ -126,6 +134,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["operacoes"]["Row"], "id" | "status" | "iniciada_em">;
         Update: Partial<Database["public"]["Tables"]["operacoes"]["Insert"]>;
+        Relationships: [];
       };
       bipagens: {
         Row: {
@@ -143,6 +152,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado">;
         Update: Partial<Database["public"]["Tables"]["bipagens"]["Insert"]>;
+        Relationships: [];
       };
       configuracoes: {
         Row: {
@@ -153,6 +163,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["configuracoes"]["Row"], "atualizado_em">;
         Update: Partial<Database["public"]["Tables"]["configuracoes"]["Insert"]>;
+        Relationships: [];
       };
       auditoria: {
         Row: {
@@ -165,6 +176,7 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["auditoria"]["Row"], "id" | "criado_em">;
         Update: never;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

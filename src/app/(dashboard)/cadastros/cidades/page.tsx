@@ -1,0 +1,68 @@
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CidadeFormDialog } from "./cidade-form";
+
+export default async function CidadesPage() {
+  const supabase = await requireAdmin();
+
+  const { data: cidades } = await supabase
+    .from("cidades")
+    .select("*")
+    .order("nome");
+
+  return (
+    <main className="space-y-4 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Cidades</h1>
+        <CidadeFormDialog trigger={<Button>Nova cidade</Button>} />
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>UF</TableHead>
+            <TableHead className="w-20" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {cidades?.length ? (
+            cidades.map((cidade) => (
+              <TableRow key={cidade.id}>
+                <TableCell>{cidade.nome}</TableCell>
+                <TableCell>{cidade.uf}</TableCell>
+                <TableCell>
+                  <CidadeFormDialog
+                    cidade={cidade}
+                    trigger={
+                      <Button variant="ghost" size="sm">
+                        Editar
+                      </Button>
+                    }
+                  />
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={3}
+                className="text-center text-muted-foreground"
+              >
+                Nenhuma cidade cadastrada.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </main>
+  );
+}
