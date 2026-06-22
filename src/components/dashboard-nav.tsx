@@ -9,11 +9,16 @@ import type { Database } from "@/lib/types/database.types";
 
 type Papel = Database["public"]["Tables"]["colaboradores"]["Row"]["papel"];
 
-const CADASTROS_LINKS = [
+const LINKS_ADMIN = [
   { href: "/cadastros/cidades", label: "Cidades" },
   { href: "/cadastros/bairros", label: "Bairros" },
   { href: "/cadastros/galpoes", label: "Galpões" },
   { href: "/cadastros/transportadoras", label: "Transportadoras" },
+  { href: "/cadastros/colaboradores", label: "Colaboradores" },
+];
+
+const LINKS_ADMIN_OU_GERENTE = [
+  { href: "/cadastros/motoristas", label: "Motoristas" },
 ];
 
 export function DashboardNav({
@@ -25,6 +30,11 @@ export function DashboardNav({
 }) {
   const pathname = usePathname();
 
+  const links = [
+    ...(papel === "admin" ? LINKS_ADMIN : []),
+    ...(papel === "admin" || papel === "gerente" ? LINKS_ADMIN_OU_GERENTE : []),
+  ];
+
   return (
     <header className="border-b">
       <nav className="flex items-center gap-4 px-6 py-3">
@@ -32,9 +42,9 @@ export function DashboardNav({
           RotaScan
         </Link>
 
-        {papel === "admin" && (
+        {links.length > 0 && (
           <div className="flex items-center gap-3 text-sm">
-            {CADASTROS_LINKS.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

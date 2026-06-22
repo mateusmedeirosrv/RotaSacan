@@ -19,3 +19,24 @@ export async function requireAdmin() {
 
   return supabase;
 }
+
+export async function requireAdminOrGerente() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: colaborador } = await supabase
+    .from("colaboradores")
+    .select("papel")
+    .eq("user_id", user.id)
+    .single();
+
+  if (colaborador?.papel !== "admin" && colaborador?.papel !== "gerente") {
+    redirect("/");
+  }
+
+  return supabase;
+}

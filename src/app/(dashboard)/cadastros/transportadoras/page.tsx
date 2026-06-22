@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdmin } from "@/lib/auth/guards";
 import { Button } from "@/components/ui/button";
 import {
   Table,

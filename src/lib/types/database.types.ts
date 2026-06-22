@@ -72,7 +72,7 @@ export interface Database {
           galpao_id: string;
           user_id: string;
           nome: string;
-          cpf: string;
+          cpf: string | null;
           email: string;
           papel: "admin" | "gerente" | "colaborador";
           ativo: boolean;
