@@ -151,6 +151,7 @@ export interface Database {
           sincronizado_em: string | null;
         };
         Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado"> & {
+          bipado_em?: string;
           override_aplicado?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["bipagens"]["Insert"]>;

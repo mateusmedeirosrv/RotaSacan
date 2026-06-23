@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLiveQuery } from "dexie-react-hooks";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { tocarSom } from "@/lib/sounds";
@@ -13,6 +14,7 @@ import {
   existeRecebimentoPrevio,
   tentarOverride,
 } from "@/lib/bipagem/registrar";
+import { dbOffline } from "@/lib/bipagem/db-offline";
 import type { Database } from "@/lib/types/database.types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,7 @@ type Motorista = { id: string; nome: string };
 type EventoBipagem = {
   id: string;
   codigo: string;
-  status: "confirmado" | "duplicado" | "erro";
+  status: "confirmado" | "duplicado" | "erro" | "pendente";
   bipadoEm: string;
 };
 
@@ -53,11 +55,21 @@ const SONS = {
   erro: "/sounds/erro.wav",
 };
 
-const FLASH_CLASSE: Record<EventoBipagem["status"], string> = {
+const FLASH_CLASSE: Record<"confirmado" | "duplicado" | "erro", string> = {
   confirmado: "bg-green-500/25",
   duplicado: "bg-yellow-500/25",
   erro: "bg-red-500/25",
 };
+
+function lerEstadoLocal(operacaoId: string): { rotaAtivaId?: string; motoristaAtivoId?: string } {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(`rotascan:bipagem:${operacaoId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 export function BipagemConsole({
   operacaoId,
@@ -82,18 +94,63 @@ export function BipagemConsole({
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [rotaAtivaId, setRotaAtivaId] = useState(rotas[0]?.id ?? "");
+  const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
   const [motoristaAtivoId, setMotoristaAtivoId] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
   const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
   const [overlayIndice, setOverlayIndice] = useState(0);
-  const [flash, setFlash] = useState<EventoBipagem["status"] | null>(null);
+  const [flash, setFlash] = useState<"confirmado" | "duplicado" | "erro" | null>(null);
   const [overrideAberto, setOverrideAberto] = useState(false);
   const [overrideCodigo, setOverrideCodigo] = useState<string | null>(null);
   const [senhaOverride, setSenhaOverride] = useState("");
   const [enviandoOverride, setEnviandoOverride] = useState(false);
+  const [online, setOnline] = useState(true);
 
   const motoristaObrigatorio = tipoEvento !== "RECEBIMENTO";
+
+  const hidratadoRef = useRef(false);
+
+  useEffect(() => {
+    if (!hidratadoRef.current) {
+      hidratadoRef.current = true;
+      const salva = lerEstadoLocal(operacaoId);
+      setRotaAtivaId((atual) =>
+        salva.rotaAtivaId && rotas.some((r) => r.id === salva.rotaAtivaId) ? salva.rotaAtivaId : atual
+      );
+      setMotoristaAtivoId((atual) =>
+        salva.motoristaAtivoId && motoristas.some((m) => m.id === salva.motoristaAtivoId)
+          ? salva.motoristaAtivoId
+          : atual
+      );
+      return;
+    }
+    localStorage.setItem(
+      `rotascan:bipagem:${operacaoId}`,
+      JSON.stringify({ rotaAtivaId, motoristaAtivoId })
+    );
+  }, [operacaoId, rotaAtivaId, motoristaAtivoId, rotas, motoristas]);
+
+  useEffect(() => {
+    function aoMudarConexao() {
+      setOnline(navigator.onLine);
+    }
+    aoMudarConexao();
+    window.addEventListener("online", aoMudarConexao);
+    window.addEventListener("offline", aoMudarConexao);
+    return () => {
+      window.removeEventListener("online", aoMudarConexao);
+      window.removeEventListener("offline", aoMudarConexao);
+    };
+  }, []);
+
+  useEffect(() => {
+    function aoSincronizar() {
+      queryClient.invalidateQueries({ queryKey: ["bipagem-contagens", operacaoId] });
+      queryClient.invalidateQueries({ queryKey: ["bipagem-ultimos", operacaoId, rotaAtivaId] });
+    }
+    window.addEventListener("rotascan:fila-sync", aoSincronizar);
+    return () => window.removeEventListener("rotascan:fila-sync", aoSincronizar);
+  }, [queryClient, operacaoId, rotaAtivaId]);
 
   const { data: contagens } = useQuery({
     queryKey: ["bipagem-contagens", operacaoId],
@@ -118,9 +175,50 @@ export function BipagemConsole({
     enabled: !!rotaAtivaId,
   });
 
-  const totalConfirmadoOperacao = Object.values(contagens ?? {}).reduce((a, b) => a + b, 0);
+  const pendentesRotaAtiva = useLiveQuery(
+    () =>
+      dbOffline.fila
+        .where("[payload.operacao_id+payload.rota_id]")
+        .equals([operacaoId, rotaAtivaId])
+        .filter((item) => item.status === "pendente")
+        .toArray(),
+    [operacaoId, rotaAtivaId],
+    []
+  );
+
+  const pendentesOperacao = useLiveQuery(
+    () =>
+      dbOffline.fila
+        .filter((item) => item.payload.operacao_id === operacaoId && item.status === "pendente")
+        .toArray(),
+    [operacaoId],
+    []
+  );
+
+  const pendentesPorRota = useMemo(() => {
+    const mapa: Record<string, number> = {};
+    for (const item of pendentesOperacao ?? []) {
+      mapa[item.payload.rota_id] = (mapa[item.payload.rota_id] ?? 0) + 1;
+    }
+    return mapa;
+  }, [pendentesOperacao]);
+
+  const ultimosCombinados = useMemo((): EventoBipagem[] => {
+    const pendentesComoEvento: EventoBipagem[] = (pendentesRotaAtiva ?? []).map((item) => ({
+      id: String(item.id),
+      codigo: item.payload.codigo,
+      status: "pendente",
+      bipadoEm: item.payload.bipado_em,
+    }));
+    return [...pendentesComoEvento, ...(ultimos ?? [])]
+      .sort((a, b) => (a.bipadoEm < b.bipadoEm ? 1 : -1))
+      .slice(0, 10);
+  }, [pendentesRotaAtiva, ultimos]);
+
+  const totalConfirmadoOperacao =
+    Object.values(contagens ?? {}).reduce((a, b) => a + b, 0) + (pendentesOperacao?.length ?? 0);
   const [sessao, setSessao] = useState({ duplicado: 0, erro: 0 });
-  const ultimaConfirmada = ultimos?.find((e) => e.status === "confirmado");
+  const ultimoItem = ultimosCombinados[0];
 
   function focarInput() {
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -180,7 +278,7 @@ export function BipagemConsole({
     return () => window.removeEventListener("keydown", handler);
   }, [overlayRotaAberto, overlayIndice, rotas]);
 
-  function dispararFeedback(status: EventoBipagem["status"]) {
+  function dispararFeedback(status: "confirmado" | "duplicado" | "erro") {
     tocarSom(SONS[status]);
     setFlash(status);
     setTimeout(() => setFlash(null), 250);
@@ -230,6 +328,8 @@ export function BipagemConsole({
             ...(old ?? []),
           ].slice(0, 10)
       );
+    } else if (resultado.status === "pendente") {
+      dispararFeedback("confirmado");
     } else if (resultado.status === "duplicado") {
       adicionarEventoSessao(codigo, "duplicado");
     } else {
@@ -253,16 +353,22 @@ export function BipagemConsole({
       return;
     }
 
-    if (tipoEvento === "ENTREGA" && bloqueioConfig !== "PERMITIR") {
-      const jaRecebido = await existeRecebimentoPrevio(supabase, transportadoraId, codigo);
-      if (!jaRecebido) {
-        if (bloqueioConfig === "PERMITIR_COM_ALERTA") {
-          toast.warning("Entrega sem recebimento prévio registrado.");
-        } else {
-          setOverrideCodigo(codigo);
-          setOverrideAberto(true);
-          return;
+    if (online && tipoEvento === "ENTREGA" && bloqueioConfig !== "PERMITIR") {
+      try {
+        const jaRecebido = await existeRecebimentoPrevio(supabase, transportadoraId, codigo);
+        if (!jaRecebido) {
+          if (bloqueioConfig === "PERMITIR_COM_ALERTA") {
+            toast.warning("Entrega sem recebimento prévio registrado.");
+          } else {
+            setOverrideCodigo(codigo);
+            setOverrideAberto(true);
+            return;
+          }
         }
+      } catch {
+        // Falha ao verificar recebimento prévio (rede instável mesmo com
+        // navigator.onLine true): não bloqueia o bipe — enfileira e deixa
+        // a checagem real acontecer no sync, igual ao fluxo offline.
       }
     }
 
@@ -302,12 +408,20 @@ export function BipagemConsole({
   }
 
   async function handleDesfazer() {
-    if (!ultimaConfirmada) return;
+    if (!ultimoItem || ultimoItem.status === "duplicado" || ultimoItem.status === "erro") return;
+
+    if (ultimoItem.status === "pendente") {
+      await dbOffline.fila.delete(Number(ultimoItem.id));
+      toast.success("Bipagem pendente removida.");
+      focarInput();
+      return;
+    }
+
     try {
-      await desfazerBipagem(supabase, ultimaConfirmada.id);
+      await desfazerBipagem(supabase, ultimoItem.id);
       queryClient.setQueryData(
         ["bipagem-ultimos", operacaoId, rotaAtivaId],
-        (old: EventoBipagem[] | undefined) => (old ?? []).filter((e) => e.id !== ultimaConfirmada.id)
+        (old: EventoBipagem[] | undefined) => (old ?? []).filter((e) => e.id !== ultimoItem.id)
       );
       queryClient.setQueryData(
         ["bipagem-contagens", operacaoId],
@@ -338,6 +452,16 @@ export function BipagemConsole({
         <div className={cn("pointer-events-none fixed inset-0 z-40 transition-opacity", FLASH_CLASSE[flash])} />
       )}
 
+      <div className="flex items-center gap-2 text-xs">
+        <span className={cn("inline-block h-2 w-2 rounded-full", online ? "bg-green-500" : "bg-red-500")} />
+        <span className="text-muted-foreground">{online ? "Online" : "Offline"}</span>
+        {(pendentesOperacao?.length ?? 0) > 0 && (
+          <span className="text-muted-foreground">
+            · {pendentesOperacao?.length} pendente{(pendentesOperacao?.length ?? 0) > 1 ? "s" : ""} de sincronização
+          </span>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         {rotas.map((rota) => (
           <button
@@ -352,7 +476,7 @@ export function BipagemConsole({
               rota.id === rotaAtivaId ? "border-foreground bg-foreground text-background" : "text-muted-foreground"
             )}
           >
-            {rota.nome} · {contagens?.[rota.id] ?? 0}
+            {rota.nome} · {(contagens?.[rota.id] ?? 0) + (pendentesPorRota[rota.id] ?? 0)}
           </button>
         ))}
         <span className="text-xs text-muted-foreground">(F2 para trocar de rota)</span>
@@ -395,27 +519,34 @@ export function BipagemConsole({
         <span>Duplicados: <strong>{sessao.duplicado}</strong></span>
         <span>Erros: <strong>{sessao.erro}</strong></span>
         <span className="text-muted-foreground">
-          Rota ativa: {contagens?.[rotaAtivaId] ?? 0}
+          Rota ativa: {(contagens?.[rotaAtivaId] ?? 0) + (pendentesPorRota[rotaAtivaId] ?? 0)}
         </span>
       </div>
 
-      <Button type="button" variant="outline" size="sm" disabled={!ultimaConfirmada} onClick={handleDesfazer}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={!ultimoItem || ultimoItem.status === "duplicado" || ultimoItem.status === "erro"}
+        onClick={handleDesfazer}
+      >
         Desfazer última bipagem
       </Button>
 
       <ul className="divide-y text-sm">
-        {(ultimos ?? []).map((evento) => (
+        {ultimosCombinados.map((evento) => (
           <li key={evento.id} className="flex items-center justify-between py-1.5">
             <span>{evento.codigo}</span>
             <span
               className={cn(
                 "text-xs",
                 evento.status === "confirmado" && "text-green-600",
+                evento.status === "pendente" && "text-blue-600",
                 evento.status === "duplicado" && "text-yellow-600",
                 evento.status === "erro" && "text-red-600"
               )}
             >
-              {evento.status}
+              {evento.status === "pendente" ? "pendente de sincronização" : evento.status}
             </span>
           </li>
         ))}

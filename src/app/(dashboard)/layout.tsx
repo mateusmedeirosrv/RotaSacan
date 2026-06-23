@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/query-provider";
+import { OfflineSyncProvider } from "@/components/offline-sync-provider";
 
 export default async function DashboardLayout({
   children,
@@ -24,12 +25,14 @@ export default async function DashboardLayout({
 
   return (
     <QueryProvider>
-      <DashboardNav
-        papel={colaborador?.papel ?? null}
-        nome={colaborador?.nome ?? null}
-      />
-      {children}
-      <Toaster />
+      <OfflineSyncProvider>
+        <DashboardNav
+          papel={colaborador?.papel ?? null}
+          nome={colaborador?.nome ?? null}
+        />
+        {children}
+        <Toaster />
+      </OfflineSyncProvider>
     </QueryProvider>
   );
 }

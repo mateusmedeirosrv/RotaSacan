@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLiveQuery } from "dexie-react-hooks";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/(auth)/login/actions";
+import { dbOffline } from "@/lib/bipagem/db-offline";
 import type { Database } from "@/lib/types/database.types";
 
 type Papel = Database["public"]["Tables"]["colaboradores"]["Row"]["papel"];
@@ -33,6 +35,11 @@ export function DashboardNav({
   nome: string | null;
 }) {
   const pathname = usePathname();
+  const pendentes = useLiveQuery(
+    () => dbOffline.fila.where("status").equals("pendente").count(),
+    [],
+    0
+  );
 
   const links = [
     ...LINKS_TODOS,
@@ -65,6 +72,11 @@ export function DashboardNav({
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          {pendentes > 0 && (
+            <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-700">
+              {pendentes} pendente{pendentes > 1 ? "s" : ""} de sincronização
+            </span>
+          )}
           {nome && (
             <span className="text-sm text-muted-foreground">{nome}</span>
           )}

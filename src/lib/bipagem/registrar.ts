@@ -1,30 +1,72 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types/database.types";
+import { dbOffline, type BipagemPendentePayload } from "./db-offline";
 
 type Supabase = SupabaseClient<Database>;
 type BipagemRow = Database["public"]["Tables"]["bipagens"]["Row"];
-type BipagemInsert = Database["public"]["Tables"]["bipagens"]["Insert"];
 
 export type ResultadoBipagem =
   | { status: "confirmado"; bipagem: BipagemRow }
   | { status: "duplicado" }
-  | { status: "erro"; mensagem: string };
+  | { status: "erro"; mensagem: string }
+  | { status: "pendente" };
 
-function isUniqueViolation(error: { code?: string; message?: string }) {
+export function isUniqueViolation(error: { code?: string; message?: string }) {
   return error.code === "23505" || error.message?.includes("duplicate key") === true;
+}
+
+// postgrest-js retorna code: "" (string vazia) quando o fetch falha por
+// problema de rede — diferente de um erro real do Postgres, que sempre
+// vem com um code (ex. 23505). Ausência de code == "estava offline".
+export function isFalhaDeRede(error: { code?: string }) {
+  return !error.code;
+}
+
+export type BloqueioConfig = "BLOQUEAR" | "PERMITIR_COM_ALERTA" | "PERMITIR";
+
+export async function buscarBloqueioConfig(supabase: Supabase): Promise<BloqueioConfig> {
+  const { data } = await supabase
+    .from("configuracoes")
+    .select("valor")
+    .eq("chave", "bipagem_entrega_sem_recebimento")
+    .maybeSingle();
+
+  return (data?.valor as BloqueioConfig | undefined) ?? "PERMITIR";
+}
+
+async function enfileirar(payload: BipagemPendentePayload): Promise<void> {
+  await dbOffline.fila.add({
+    payload,
+    status: "pendente",
+    criadoEm: new Date().toISOString(),
+  });
 }
 
 export async function registrarBipagem(
   supabase: Supabase,
-  input: Omit<BipagemInsert, "sincronizado_em">
+  input: Omit<BipagemPendentePayload, "bipado_em"> & { bipado_em?: string }
 ): Promise<ResultadoBipagem> {
+  const payload: BipagemPendentePayload = {
+    ...input,
+    bipado_em: input.bipado_em ?? new Date().toISOString(),
+  };
+
+  if (!navigator.onLine) {
+    await enfileirar(payload);
+    return { status: "pendente" };
+  }
+
   const { data, error } = await supabase
     .from("bipagens")
-    .insert({ ...input, sincronizado_em: null })
+    .insert({ ...payload, sincronizado_em: new Date().toISOString() })
     .select()
     .single();
 
   if (error) {
+    if (isFalhaDeRede(error)) {
+      await enfileirar(payload);
+      return { status: "pendente" };
+    }
     if (isUniqueViolation(error)) return { status: "duplicado" };
     return { status: "erro", mensagem: error.message };
   }

@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth/guards";
 import { ManifestoUpload } from "./manifesto-upload";
 import { FinalizarOperacaoButton } from "./finalizar-button";
 import { BipagemConsole } from "./bipagem-console";
+import { ConflitosSection } from "./conflitos-section";
 
 const TIPO_EVENTO_LABEL: Record<string, string> = {
   RECEBIMENTO: "Recebimento",
@@ -154,6 +155,8 @@ export default async function OperacaoDetalhePage({
           bloqueioConfig={dadosBipagem.bloqueioConfig}
         />
       )}
+
+      <ConflitosSection operacaoId={operacao.id} />
 
       {conferencia && (
         <div className="space-y-2">
