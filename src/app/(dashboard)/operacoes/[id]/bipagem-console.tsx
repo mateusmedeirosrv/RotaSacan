@@ -97,6 +97,7 @@ export function BipagemConsole({
   const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
   const [motoristaAtivoId, setMotoristaAtivoId] = useState("");
   const [codigoInput, setCodigoInput] = useState("");
+  const [motivoInput, setMotivoInput] = useState("");
   const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
   const [overlayIndice, setOverlayIndice] = useState(0);
   const [flash, setFlash] = useState<"confirmado" | "duplicado" | "erro" | null>(null);
@@ -304,6 +305,7 @@ export function BipagemConsole({
       tipo_evento: tipoEvento,
       colaborador_id: colaboradorId,
       override_aplicado: overrideAplicado,
+      motivo: tipoEvento === "RETORNO" ? motivoInput.trim() || null : null,
     });
 
     if (resultado.status === "confirmado") {
@@ -499,6 +501,18 @@ export function BipagemConsole({
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {tipoEvento === "RETORNO" && (
+        <div className="max-w-xs space-y-1">
+          <Label htmlFor="motivo_retorno">Motivo (opcional)</Label>
+          <Input
+            id="motivo_retorno"
+            value={motivoInput}
+            onChange={(e) => setMotivoInput(e.target.value)}
+            placeholder="Ex.: cliente ausente"
+          />
         </div>
       )}
 

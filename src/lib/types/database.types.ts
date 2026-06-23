@@ -149,10 +149,17 @@ export interface Database {
           bipado_em: string;
           override_aplicado: boolean;
           sincronizado_em: string | null;
+          ciclo_fechado: boolean;
+          motivo: string | null;
         };
-        Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado"> & {
+        Insert: Omit<
+          Database["public"]["Tables"]["bipagens"]["Row"],
+          "id" | "bipado_em" | "override_aplicado" | "ciclo_fechado" | "motivo"
+        > & {
           bipado_em?: string;
           override_aplicado?: boolean;
+          ciclo_fechado?: boolean;
+          motivo?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["bipagens"]["Insert"]>;
         Relationships: [];
