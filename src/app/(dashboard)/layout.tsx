@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/query-provider";
 
 export default async function DashboardLayout({
   children,
@@ -22,13 +23,13 @@ export default async function DashboardLayout({
     .single();
 
   return (
-    <>
+    <QueryProvider>
       <DashboardNav
         papel={colaborador?.papel ?? null}
         nome={colaborador?.nome ?? null}
       />
       {children}
       <Toaster />
-    </>
+    </QueryProvider>
   );
 }

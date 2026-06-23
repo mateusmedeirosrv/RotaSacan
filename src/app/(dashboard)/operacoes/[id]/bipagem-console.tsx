@@ -1,0 +1,485 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { tocarSom } from "@/lib/sounds";
+import {
+  registrarBipagem,
+  buscarUltimasBipagens,
+  buscarContagemPorRota,
+  desfazerBipagem,
+  existeRecebimentoPrevio,
+  tentarOverride,
+} from "@/lib/bipagem/registrar";
+import type { Database } from "@/lib/types/database.types";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type TipoEvento = Database["public"]["Tables"]["operacoes"]["Row"]["tipo_evento"];
+type BloqueioConfig = "BLOQUEAR" | "PERMITIR_COM_ALERTA" | "PERMITIR";
+
+type Rota = { id: string; nome: string };
+type Motorista = { id: string; nome: string };
+
+type EventoBipagem = {
+  id: string;
+  codigo: string;
+  status: "confirmado" | "duplicado" | "erro";
+  bipadoEm: string;
+};
+
+const SONS = {
+  confirmado: "/sounds/confirmado.wav",
+  duplicado: "/sounds/duplicado.wav",
+  erro: "/sounds/erro.wav",
+};
+
+const FLASH_CLASSE: Record<EventoBipagem["status"], string> = {
+  confirmado: "bg-green-500/25",
+  duplicado: "bg-yellow-500/25",
+  erro: "bg-red-500/25",
+};
+
+export function BipagemConsole({
+  operacaoId,
+  colaboradorId,
+  transportadoraId,
+  regexValidacao,
+  tipoEvento,
+  rotas,
+  motoristas,
+  bloqueioConfig,
+}: {
+  operacaoId: string;
+  colaboradorId: string;
+  transportadoraId: string;
+  regexValidacao: string | null;
+  tipoEvento: TipoEvento;
+  rotas: Rota[];
+  motoristas: Motorista[];
+  bloqueioConfig: BloqueioConfig;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const queryClient = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [rotaAtivaId, setRotaAtivaId] = useState(rotas[0]?.id ?? "");
+  const [motoristaAtivoId, setMotoristaAtivoId] = useState("");
+  const [codigoInput, setCodigoInput] = useState("");
+  const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
+  const [overlayIndice, setOverlayIndice] = useState(0);
+  const [flash, setFlash] = useState<EventoBipagem["status"] | null>(null);
+  const [overrideAberto, setOverrideAberto] = useState(false);
+  const [overrideCodigo, setOverrideCodigo] = useState<string | null>(null);
+  const [senhaOverride, setSenhaOverride] = useState("");
+  const [enviandoOverride, setEnviandoOverride] = useState(false);
+
+  const motoristaObrigatorio = tipoEvento !== "RECEBIMENTO";
+
+  const { data: contagens } = useQuery({
+    queryKey: ["bipagem-contagens", operacaoId],
+    queryFn: () => buscarContagemPorRota(supabase, operacaoId),
+    staleTime: Infinity,
+  });
+
+  const { data: ultimos } = useQuery({
+    queryKey: ["bipagem-ultimos", operacaoId, rotaAtivaId],
+    queryFn: async () => {
+      const linhas = await buscarUltimasBipagens(supabase, operacaoId, rotaAtivaId);
+      return linhas.map(
+        (linha): EventoBipagem => ({
+          id: linha.id,
+          codigo: linha.codigo,
+          status: "confirmado",
+          bipadoEm: linha.bipado_em,
+        })
+      );
+    },
+    staleTime: Infinity,
+    enabled: !!rotaAtivaId,
+  });
+
+  const totalConfirmadoOperacao = Object.values(contagens ?? {}).reduce((a, b) => a + b, 0);
+  const [sessao, setSessao] = useState({ duplicado: 0, erro: 0 });
+  const ultimaConfirmada = ultimos?.find((e) => e.status === "confirmado");
+
+  function focarInput() {
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  // Rede de segurança: o foco do scanner nunca pode ficar perdido.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!overlayRotaAberto && !overrideAberto && document.activeElement !== inputRef.current) {
+        inputRef.current?.focus();
+      }
+    }, 750);
+    return () => clearInterval(id);
+  }, [overlayRotaAberto, overrideAberto]);
+
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === "F2" && !overrideAberto) {
+        e.preventDefault();
+        setOverlayIndice(rotas.findIndex((r) => r.id === rotaAtivaId));
+        setOverlayRotaAberto(true);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [overrideAberto, rotaAtivaId, rotas]);
+
+  useEffect(() => {
+    if (!overlayRotaAberto) return;
+    function handler(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOverlayRotaAberto(false);
+        focarInput();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setOverlayIndice((i) => Math.min(i + 1, rotas.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setOverlayIndice((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const rota = rotas[overlayIndice];
+        if (rota) setRotaAtivaId(rota.id);
+        setOverlayRotaAberto(false);
+        focarInput();
+      } else if (/^[1-9]$/.test(e.key)) {
+        const rota = rotas[Number(e.key) - 1];
+        if (rota) {
+          setRotaAtivaId(rota.id);
+          setOverlayRotaAberto(false);
+          focarInput();
+        }
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [overlayRotaAberto, overlayIndice, rotas]);
+
+  function dispararFeedback(status: EventoBipagem["status"]) {
+    tocarSom(SONS[status]);
+    setFlash(status);
+    setTimeout(() => setFlash(null), 250);
+  }
+
+  function adicionarEventoSessao(codigo: string, status: "duplicado" | "erro") {
+    dispararFeedback(status);
+    setSessao((s) => ({ ...s, [status]: s[status] + 1 }));
+    queryClient.setQueryData(
+      ["bipagem-ultimos", operacaoId, rotaAtivaId],
+      (old: EventoBipagem[] | undefined) =>
+        [{ id: crypto.randomUUID(), codigo, status, bipadoEm: new Date().toISOString() }, ...(old ?? [])].slice(0, 10)
+    );
+  }
+
+  async function inserir(codigo: string, overrideAplicado: boolean) {
+    const resultado = await registrarBipagem(supabase, {
+      operacao_id: operacaoId,
+      rota_id: rotaAtivaId,
+      motorista_id: tipoEvento === "RECEBIMENTO" ? null : motoristaAtivoId,
+      transportadora_id: transportadoraId,
+      codigo,
+      tipo_evento: tipoEvento,
+      colaborador_id: colaboradorId,
+      override_aplicado: overrideAplicado,
+    });
+
+    if (resultado.status === "confirmado") {
+      dispararFeedback("confirmado");
+      queryClient.setQueryData(
+        ["bipagem-contagens", operacaoId],
+        (old: Record<string, number> | undefined) => ({
+          ...old,
+          [rotaAtivaId]: (old?.[rotaAtivaId] ?? 0) + 1,
+        })
+      );
+      queryClient.setQueryData(
+        ["bipagem-ultimos", operacaoId, rotaAtivaId],
+        (old: EventoBipagem[] | undefined) =>
+          [
+            {
+              id: resultado.bipagem.id,
+              codigo: resultado.bipagem.codigo,
+              status: "confirmado" as const,
+              bipadoEm: resultado.bipagem.bipado_em,
+            },
+            ...(old ?? []),
+          ].slice(0, 10)
+      );
+    } else if (resultado.status === "duplicado") {
+      adicionarEventoSessao(codigo, "duplicado");
+    } else {
+      toast.error(resultado.mensagem);
+      adicionarEventoSessao(codigo, "erro");
+    }
+  }
+
+  async function processarCodigo(codigoBruto: string) {
+    const codigo = codigoBruto.trim();
+    if (!codigo) return;
+
+    if (regexValidacao && !new RegExp(regexValidacao).test(codigo)) {
+      adicionarEventoSessao(codigo, "erro");
+      return;
+    }
+
+    if (motoristaObrigatorio && !motoristaAtivoId) {
+      toast.error("Selecione um motorista antes de bipar.");
+      adicionarEventoSessao(codigo, "erro");
+      return;
+    }
+
+    if (tipoEvento === "ENTREGA" && bloqueioConfig !== "PERMITIR") {
+      const jaRecebido = await existeRecebimentoPrevio(supabase, transportadoraId, codigo);
+      if (!jaRecebido) {
+        if (bloqueioConfig === "PERMITIR_COM_ALERTA") {
+          toast.warning("Entrega sem recebimento prévio registrado.");
+        } else {
+          setOverrideCodigo(codigo);
+          setOverrideAberto(true);
+          return;
+        }
+      }
+    }
+
+    await inserir(codigo, false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const codigo = codigoInput;
+    setCodigoInput("");
+    await processarCodigo(codigo);
+  }
+
+  async function confirmarOverride() {
+    if (!overrideCodigo) return;
+    setEnviandoOverride(true);
+    try {
+      const ok = await tentarOverride(supabase, {
+        senhaTentativa: senhaOverride,
+        codigo: overrideCodigo,
+        operacaoId,
+        rotaId: rotaAtivaId,
+      });
+
+      if (ok) {
+        await inserir(overrideCodigo, true);
+        setOverrideAberto(false);
+        setOverrideCodigo(null);
+        setSenhaOverride("");
+      } else {
+        toast.error("Senha de override incorreta.");
+        dispararFeedback("erro");
+      }
+    } finally {
+      setEnviandoOverride(false);
+    }
+  }
+
+  async function handleDesfazer() {
+    if (!ultimaConfirmada) return;
+    try {
+      await desfazerBipagem(supabase, ultimaConfirmada.id);
+      queryClient.setQueryData(
+        ["bipagem-ultimos", operacaoId, rotaAtivaId],
+        (old: EventoBipagem[] | undefined) => (old ?? []).filter((e) => e.id !== ultimaConfirmada.id)
+      );
+      queryClient.setQueryData(
+        ["bipagem-contagens", operacaoId],
+        (old: Record<string, number> | undefined) => ({
+          ...old,
+          [rotaAtivaId]: Math.max(0, (old?.[rotaAtivaId] ?? 1) - 1),
+        })
+      );
+      toast.success("Bipagem desfeita.");
+    } catch {
+      toast.error("Não foi possível desfazer a bipagem.");
+    } finally {
+      focarInput();
+    }
+  }
+
+  if (rotas.length === 0) {
+    return (
+      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+        Nenhuma rota cadastrada neste galpão. Cadastre uma rota antes de bipar.
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative space-y-4 rounded-lg border p-4">
+      {flash && (
+        <div className={cn("pointer-events-none fixed inset-0 z-40 transition-opacity", FLASH_CLASSE[flash])} />
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {rotas.map((rota) => (
+          <button
+            key={rota.id}
+            type="button"
+            onClick={() => {
+              setRotaAtivaId(rota.id);
+              focarInput();
+            }}
+            className={cn(
+              "rounded-md border px-3 py-1.5 text-sm",
+              rota.id === rotaAtivaId ? "border-foreground bg-foreground text-background" : "text-muted-foreground"
+            )}
+          >
+            {rota.nome} · {contagens?.[rota.id] ?? 0}
+          </button>
+        ))}
+        <span className="text-xs text-muted-foreground">(F2 para trocar de rota)</span>
+      </div>
+
+      {motoristaObrigatorio && (
+        <div className="max-w-xs space-y-1">
+          <Label htmlFor="motorista_ativo">Motorista</Label>
+          <Select value={motoristaAtivoId} onValueChange={(value) => setMotoristaAtivoId(value ?? "")}>
+            <SelectTrigger id="motorista_ativo" className="w-full">
+              <SelectValue placeholder="Selecione o motorista">
+                {(value: string) => motoristas.find((m) => m.id === value)?.nome ?? "Selecione o motorista"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {motoristas.map((motorista) => (
+                <SelectItem key={motorista.id} value={motorista.id}>
+                  {motorista.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <Input
+          ref={inputRef}
+          autoFocus
+          value={codigoInput}
+          onChange={(e) => setCodigoInput(e.target.value)}
+          placeholder="Bipe o código aqui"
+          className="h-14 text-lg"
+          autoComplete="off"
+        />
+      </form>
+
+      <div className="flex gap-6 text-sm">
+        <span>Confirmados: <strong>{totalConfirmadoOperacao}</strong></span>
+        <span>Duplicados: <strong>{sessao.duplicado}</strong></span>
+        <span>Erros: <strong>{sessao.erro}</strong></span>
+        <span className="text-muted-foreground">
+          Rota ativa: {contagens?.[rotaAtivaId] ?? 0}
+        </span>
+      </div>
+
+      <Button type="button" variant="outline" size="sm" disabled={!ultimaConfirmada} onClick={handleDesfazer}>
+        Desfazer última bipagem
+      </Button>
+
+      <ul className="divide-y text-sm">
+        {(ultimos ?? []).map((evento) => (
+          <li key={evento.id} className="flex items-center justify-between py-1.5">
+            <span>{evento.codigo}</span>
+            <span
+              className={cn(
+                "text-xs",
+                evento.status === "confirmado" && "text-green-600",
+                evento.status === "duplicado" && "text-yellow-600",
+                evento.status === "erro" && "text-red-600"
+              )}
+            >
+              {evento.status}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {overlayRotaAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-72 rounded-lg border bg-popover p-2 text-popover-foreground">
+            {rotas.map((rota, i) => (
+              <button
+                key={rota.id}
+                type="button"
+                onClick={() => {
+                  setRotaAtivaId(rota.id);
+                  setOverlayRotaAberto(false);
+                  focarInput();
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm",
+                  i === overlayIndice && "bg-foreground text-background"
+                )}
+              >
+                <span>{rota.nome}</span>
+                <span className="text-xs">{i + 1}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Dialog
+        open={overrideAberto}
+        onOpenChange={(open) => {
+          setOverrideAberto(open);
+          if (!open) {
+            setOverrideCodigo(null);
+            setSenhaOverride("");
+            focarInput();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Entrega sem recebimento prévio</DialogTitle>
+            <DialogDescription>
+              O código <strong>{overrideCodigo}</strong> não tem recebimento registrado. Informe a
+              senha de override para liberar esta bipagem.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="password"
+            value={senhaOverride}
+            onChange={(e) => setSenhaOverride(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && confirmarOverride()}
+            placeholder="Senha de override"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button disabled={enviandoOverride || !senhaOverride} onClick={confirmarOverride}>
+              {enviandoOverride ? "Verificando..." : "Liberar bipagem"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/guards";
 import { ManifestoUpload } from "./manifesto-upload";
 import { FinalizarOperacaoButton } from "./finalizar-button";
+import { BipagemConsole } from "./bipagem-console";
 
 const TIPO_EVENTO_LABEL: Record<string, string> = {
   RECEBIMENTO: "Recebimento",
@@ -17,7 +18,7 @@ export default async function OperacaoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase } = await requireAuth();
+  const { supabase, colaborador } = await requireAuth();
 
   const { data: operacao } = await supabase
     .from("operacoes")
@@ -41,6 +42,42 @@ export default async function OperacaoDetalhePage({
 
   const ehRecebimento = operacao.tipo_evento === "RECEBIMENTO";
   const finalizada = operacao.status === "FINALIZADA";
+
+  let dadosBipagem: {
+    rotas: { id: string; nome: string }[];
+    motoristas: { id: string; nome: string }[];
+    bloqueioConfig: "BLOQUEAR" | "PERMITIR_COM_ALERTA" | "PERMITIR";
+  } | null = null;
+
+  if (!finalizada) {
+    const [{ data: rotas }, { data: motoristas }, { data: config }] = await Promise.all([
+      supabase
+        .from("rotas")
+        .select("id, nome")
+        .eq("galpao_id", operacao.galpao_id)
+        .eq("ativa", true)
+        .order("nome"),
+      supabase
+        .from("motoristas")
+        .select("id, nome")
+        .eq("galpao_id", operacao.galpao_id)
+        .eq("ativo", true)
+        .order("nome"),
+      supabase
+        .from("configuracoes")
+        .select("valor")
+        .eq("chave", "bipagem_entrega_sem_recebimento")
+        .maybeSingle(),
+    ]);
+
+    dadosBipagem = {
+      rotas: rotas ?? [],
+      motoristas: motoristas ?? [],
+      bloqueioConfig:
+        (config?.valor as "BLOQUEAR" | "PERMITIR_COM_ALERTA" | "PERMITIR" | undefined) ??
+        "PERMITIR",
+    };
+  }
 
   let conferencia: { encontradas: number; faltantes: number; extras: number } | null =
     null;
@@ -103,6 +140,19 @@ export default async function OperacaoDetalhePage({
             <ManifestoUpload operacaoId={operacao.id} />
           )}
         </div>
+      )}
+
+      {!finalizada && dadosBipagem && (
+        <BipagemConsole
+          operacaoId={operacao.id}
+          colaboradorId={colaborador.id}
+          transportadoraId={operacao.transportadora_id}
+          regexValidacao={transportadora?.regex_validacao ?? null}
+          tipoEvento={operacao.tipo_evento}
+          rotas={dadosBipagem.rotas}
+          motoristas={dadosBipagem.motoristas}
+          bloqueioConfig={dadosBipagem.bloqueioConfig}
+        />
       )}
 
       {conferencia && (

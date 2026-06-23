@@ -150,7 +150,9 @@ export interface Database {
           override_aplicado: boolean;
           sincronizado_em: string | null;
         };
-        Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado">;
+        Insert: Omit<Database["public"]["Tables"]["bipagens"]["Row"], "id" | "bipado_em" | "override_aplicado"> & {
+          override_aplicado?: boolean;
+        };
         Update: Partial<Database["public"]["Tables"]["bipagens"]["Insert"]>;
         Relationships: [];
       };
@@ -203,7 +205,21 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      tentar_override: {
+        Args: {
+          senha_tentativa: string;
+          p_codigo: string;
+          p_operacao_id: string;
+          p_rota_id: string;
+        };
+        Returns: boolean;
+      };
+      desfazer_bipagem: {
+        Args: { p_bipagem_id: string };
+        Returns: undefined;
+      };
+    };
     Enums: {
       tipo_evento: TipoEvento;
       status_operacao: StatusOperacao;
