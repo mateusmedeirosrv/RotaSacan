@@ -17,6 +17,17 @@ export type TipoEvento =
 
 export type StatusOperacao = "EM_ANDAMENTO" | "FINALIZADA";
 
+export interface DashboardKpis {
+  total: number;
+  por_dia: { dia: string; total: number }[];
+  por_transportadora: { transportadora: string; total: number }[];
+  por_motorista: { motorista: string; total: number }[];
+  por_tipo_evento: { tipo_evento: TipoEvento; total: number }[];
+  recebimento_total: number;
+  entrega_total: number;
+  overrides_aplicados: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -226,6 +237,20 @@ export interface Database {
       desfazer_bipagem: {
         Args: { p_bipagem_id: string };
         Returns: undefined;
+      };
+      dashboard_kpis: {
+        Args: {
+          p_data_inicio: string;
+          p_data_fim: string;
+          p_galpao_id?: string | null;
+          p_transportadora_id?: string | null;
+          p_tipo_evento?: TipoEvento | null;
+          p_operacao_id?: string | null;
+          p_rota_id?: string | null;
+          p_colaborador_id?: string | null;
+          p_motorista_id?: string | null;
+        };
+        Returns: DashboardKpis;
       };
     };
     Enums: {

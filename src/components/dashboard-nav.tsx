@@ -25,6 +25,7 @@ const LINKS_ADMIN_OU_GERENTE = [
   { href: "/cadastros/motoristas", label: "Motoristas" },
   { href: "/cadastros/rotas", label: "Rotas" },
   { href: "/operacoes/ativas", label: "Operações ativas" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export function DashboardNav({
