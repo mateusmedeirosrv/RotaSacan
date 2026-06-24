@@ -7,11 +7,20 @@ export default async function QrCodePage() {
   const { data } = await supabase
     .from("configuracoes")
     .select("chave, valor")
-    .in("chave", ["qrcode_etiqueta_largura_mm", "qrcode_etiqueta_altura_mm"]);
+    .in("chave", [
+      "qrcode_etiqueta_largura_mm",
+      "qrcode_etiqueta_altura_mm",
+      "qrcode_etiqueta_margem_mm",
+      "qrcode_etiqueta_espacamento_coluna_mm",
+      "qrcode_etiqueta_espacamento_linha_mm",
+    ]);
 
   const valores = Object.fromEntries((data ?? []).map((c) => [c.chave, c.valor]));
-  const larguraMm = Number(valores.qrcode_etiqueta_largura_mm) || 21.0;
-  const alturaMm = Number(valores.qrcode_etiqueta_altura_mm) || 38.2;
+  const larguraMm = Number(valores.qrcode_etiqueta_largura_mm) || 38.2;
+  const alturaMm = Number(valores.qrcode_etiqueta_altura_mm) || 21.2;
+  const margemMm = Number(valores.qrcode_etiqueta_margem_mm) || 0.4;
+  const espacamentoColunaMm = Number(valores.qrcode_etiqueta_espacamento_coluna_mm) || 2.0;
+  const espacamentoLinhaMm = Number(valores.qrcode_etiqueta_espacamento_linha_mm) || 0;
 
   return (
     <main className="space-y-4 p-6">
@@ -21,7 +30,13 @@ export default async function QrCodePage() {
         {larguraMm.toFixed(1)} × {alturaMm.toFixed(1)} mm — útil para re-etiquetar encomendas
         com etiqueta original danificada.
       </p>
-      <QrCodeGenerator larguraMm={larguraMm} alturaMm={alturaMm} />
+      <QrCodeGenerator
+        larguraMm={larguraMm}
+        alturaMm={alturaMm}
+        margemMm={margemMm}
+        espacamentoColunaMm={espacamentoColunaMm}
+        espacamentoLinhaMm={espacamentoLinhaMm}
+      />
     </main>
   );
 }

@@ -33,6 +33,15 @@ const schema = z.object({
   qrcode_etiqueta_altura_mm: z
     .string()
     .refine((v) => Number(v) > 0, "Informe um valor maior que zero"),
+  qrcode_etiqueta_margem_mm: z
+    .string()
+    .refine((v) => Number(v) >= 0, "Informe um valor maior ou igual a zero"),
+  qrcode_etiqueta_espacamento_coluna_mm: z
+    .string()
+    .refine((v) => Number(v) >= 0, "Informe um valor maior ou igual a zero"),
+  qrcode_etiqueta_espacamento_linha_mm: z
+    .string()
+    .refine((v) => Number(v) >= 0, "Informe um valor maior ou igual a zero"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -52,8 +61,13 @@ export function ConfiguracoesForm({ valores }: { valores: Record<string, string>
       som_confirmado_arquivo: valores.som_confirmado_arquivo ?? "",
       som_duplicado_arquivo: valores.som_duplicado_arquivo ?? "",
       som_erro_arquivo: valores.som_erro_arquivo ?? "",
-      qrcode_etiqueta_largura_mm: valores.qrcode_etiqueta_largura_mm ?? "21.0",
-      qrcode_etiqueta_altura_mm: valores.qrcode_etiqueta_altura_mm ?? "38.2",
+      qrcode_etiqueta_largura_mm: valores.qrcode_etiqueta_largura_mm ?? "38.2",
+      qrcode_etiqueta_altura_mm: valores.qrcode_etiqueta_altura_mm ?? "21.2",
+      qrcode_etiqueta_margem_mm: valores.qrcode_etiqueta_margem_mm ?? "0.4",
+      qrcode_etiqueta_espacamento_coluna_mm:
+        valores.qrcode_etiqueta_espacamento_coluna_mm ?? "2.0",
+      qrcode_etiqueta_espacamento_linha_mm:
+        valores.qrcode_etiqueta_espacamento_linha_mm ?? "0.0",
     },
   });
 
@@ -147,6 +161,55 @@ export function ConfiguracoesForm({ valores }: { valores: Record<string, string>
           {errors.qrcode_etiqueta_altura_mm && (
             <p className="text-sm text-destructive">
               {errors.qrcode_etiqueta_altura_mm.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="qrcode_etiqueta_margem_mm">Etiqueta QR — margem da folha (mm)</Label>
+          <Input
+            id="qrcode_etiqueta_margem_mm"
+            type="number"
+            step="0.1"
+            {...register("qrcode_etiqueta_margem_mm")}
+          />
+          {errors.qrcode_etiqueta_margem_mm && (
+            <p className="text-sm text-destructive">
+              {errors.qrcode_etiqueta_margem_mm.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="qrcode_etiqueta_espacamento_coluna_mm">
+            Etiqueta QR — espaço entre colunas (mm)
+          </Label>
+          <Input
+            id="qrcode_etiqueta_espacamento_coluna_mm"
+            type="number"
+            step="0.1"
+            {...register("qrcode_etiqueta_espacamento_coluna_mm")}
+          />
+          {errors.qrcode_etiqueta_espacamento_coluna_mm && (
+            <p className="text-sm text-destructive">
+              {errors.qrcode_etiqueta_espacamento_coluna_mm.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="qrcode_etiqueta_espacamento_linha_mm">
+            Etiqueta QR — espaço entre linhas (mm)
+          </Label>
+          <Input
+            id="qrcode_etiqueta_espacamento_linha_mm"
+            type="number"
+            step="0.1"
+            {...register("qrcode_etiqueta_espacamento_linha_mm")}
+          />
+          {errors.qrcode_etiqueta_espacamento_linha_mm && (
+            <p className="text-sm text-destructive">
+              {errors.qrcode_etiqueta_espacamento_linha_mm.message}
             </p>
           )}
         </div>

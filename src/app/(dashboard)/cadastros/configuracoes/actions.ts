@@ -11,6 +11,9 @@ const CHAVES_EDITAVEIS = [
   "som_erro_arquivo",
   "qrcode_etiqueta_largura_mm",
   "qrcode_etiqueta_altura_mm",
+  "qrcode_etiqueta_margem_mm",
+  "qrcode_etiqueta_espacamento_coluna_mm",
+  "qrcode_etiqueta_espacamento_linha_mm",
 ] as const;
 
 export async function salvarConfiguracoes(valores: Record<string, string>) {
