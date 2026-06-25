@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ const schema = z.object({
     .string()
     .length(2, "UF deve ter 2 letras")
     .transform((v) => v.toUpperCase()),
+  ativo: z.boolean(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -40,14 +42,21 @@ export function CidadeFormDialog({
 }) {
   const [open, setOpen] = useState(false);
 
+  const defaultValues = {
+    nome: cidade?.nome ?? "",
+    uf: cidade?.uf ?? "",
+    ativo: cidade?.ativo ?? true,
+  };
+
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { nome: cidade?.nome ?? "", uf: cidade?.uf ?? "" },
+    defaultValues,
   });
 
   async function onSubmit(data: FormData) {
@@ -69,7 +78,7 @@ export function CidadeFormDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) reset({ nome: cidade?.nome ?? "", uf: cidade?.uf ?? "" });
+        if (!next) reset(defaultValues);
       }}
     >
       <DialogTrigger render={trigger} />
@@ -93,6 +102,21 @@ export function CidadeFormDialog({
             {errors.uf && (
               <p className="text-sm text-destructive">{errors.uf.message}</p>
             )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ativo">Ativa</Label>
+            <Controller
+              name="ativo"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="ativo"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
           <DialogFooter>

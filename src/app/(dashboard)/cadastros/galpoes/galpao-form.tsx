@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ const schema = z.object({
   cidade_id: z.string().min(1, "Selecione a cidade"),
   nome: z.string().min(1, "Informe o nome do galpão"),
   endereco: z.string().optional(),
+  ativo: z.boolean(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -52,6 +54,7 @@ export function GalpaoFormDialog({
     cidade_id: galpao?.cidade_id ?? "",
     nome: galpao?.nome ?? "",
     endereco: galpao?.endereco ?? "",
+    ativo: galpao?.ativo ?? true,
   };
 
   const {
@@ -140,6 +143,21 @@ export function GalpaoFormDialog({
           <div className="space-y-1">
             <Label htmlFor="endereco">Endereço</Label>
             <Input id="endereco" {...register("endereco")} />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ativo">Ativo</Label>
+            <Controller
+              name="ativo"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="ativo"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
           <DialogFooter>

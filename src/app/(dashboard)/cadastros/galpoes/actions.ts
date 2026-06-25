@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guards";
 
-type GalpaoInput = { cidade_id: string; nome: string; endereco: string | null };
+type GalpaoInput = {
+  cidade_id: string;
+  nome: string;
+  endereco: string | null;
+  ativo: boolean;
+};
 
 function mensagemErro(error: { code?: string }) {
   if (error.code === "23505") {

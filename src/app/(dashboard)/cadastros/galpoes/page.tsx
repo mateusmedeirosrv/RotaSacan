@@ -42,6 +42,7 @@ export default async function GalpoesPage() {
             <TableHead>Nome</TableHead>
             <TableHead>Cidade</TableHead>
             <TableHead>Endereço</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -56,6 +57,7 @@ export default async function GalpoesPage() {
                     {cidade ? `${cidade.nome} - ${cidade.uf}` : "—"}
                   </TableCell>
                   <TableCell>{galpao.endereco ?? "—"}</TableCell>
+                  <TableCell>{galpao.ativo ? "Ativo" : "Inativo"}</TableCell>
                   <TableCell>
                     <GalpaoFormDialog
                       galpao={galpao}
@@ -73,7 +75,7 @@ export default async function GalpoesPage() {
           ) : (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={5}
                 className="text-center text-muted-foreground"
               >
                 Nenhum galpão cadastrado.

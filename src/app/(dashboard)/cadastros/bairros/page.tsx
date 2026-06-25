@@ -41,6 +41,7 @@ export default async function BairrosPage() {
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>Cidade</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -54,6 +55,7 @@ export default async function BairrosPage() {
                   <TableCell>
                     {cidade ? `${cidade.nome} - ${cidade.uf}` : "—"}
                   </TableCell>
+                  <TableCell>{bairro.ativo ? "Ativo" : "Inativo"}</TableCell>
                   <TableCell>
                     <BairroFormDialog
                       bairro={bairro}
@@ -71,7 +73,7 @@ export default async function BairrosPage() {
           ) : (
             <TableRow>
               <TableCell
-                colSpan={3}
+                colSpan={4}
                 className="text-center text-muted-foreground"
               >
                 Nenhum bairro cadastrado.

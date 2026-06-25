@@ -54,6 +54,7 @@ export interface Database {
           id: string;
           nome: string;
           uf: string;
+          ativo: boolean;
           criada_em: string;
         };
         Insert: Omit<Database["public"]["Tables"]["cidades"]["Row"], "id" | "criada_em">;
@@ -66,6 +67,7 @@ export interface Database {
           cidade_id: string;
           nome: string;
           endereco: string | null;
+          ativo: boolean;
           criado_em: string;
         };
         Insert: Omit<Database["public"]["Tables"]["galpoes"]["Row"], "id" | "criado_em">;
@@ -77,6 +79,7 @@ export interface Database {
           id: string;
           cidade_id: string;
           nome: string;
+          ativo: boolean;
           criado_em: string;
         };
         Insert: Omit<Database["public"]["Tables"]["bairros"]["Row"], "id" | "criado_em">;

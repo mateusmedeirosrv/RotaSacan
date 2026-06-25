@@ -30,6 +30,7 @@ export default async function CidadesPage() {
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>UF</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -39,6 +40,7 @@ export default async function CidadesPage() {
               <TableRow key={cidade.id}>
                 <TableCell>{cidade.nome}</TableCell>
                 <TableCell>{cidade.uf}</TableCell>
+                <TableCell>{cidade.ativo ? "Ativa" : "Inativa"}</TableCell>
                 <TableCell>
                   <CidadeFormDialog
                     cidade={cidade}
@@ -54,7 +56,7 @@ export default async function CidadesPage() {
           ) : (
             <TableRow>
               <TableCell
-                colSpan={3}
+                colSpan={4}
                 className="text-center text-muted-foreground"
               >
                 Nenhuma cidade cadastrada.

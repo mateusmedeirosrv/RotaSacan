@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guards";
 
-type CidadeInput = { nome: string; uf: string };
+type CidadeInput = { nome: string; uf: string; ativo: boolean };
 
 function mensagemErro(error: { code?: string }) {
   if (error.code === "23505") {

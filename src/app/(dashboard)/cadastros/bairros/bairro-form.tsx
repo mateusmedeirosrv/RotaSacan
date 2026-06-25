@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ type Cidade = Database["public"]["Tables"]["cidades"]["Row"];
 const schema = z.object({
   cidade_id: z.string().min(1, "Selecione a cidade"),
   nome: z.string().min(1, "Informe o nome do bairro"),
+  ativo: z.boolean(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -50,6 +52,7 @@ export function BairroFormDialog({
   const defaultValues = {
     cidade_id: bairro?.cidade_id ?? "",
     nome: bairro?.nome ?? "",
+    ativo: bairro?.ativo ?? true,
   };
 
   const {
@@ -132,6 +135,21 @@ export function BairroFormDialog({
             {errors.nome && (
               <p className="text-sm text-destructive">{errors.nome.message}</p>
             )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ativo">Ativo</Label>
+            <Controller
+              name="ativo"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="ativo"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
           <DialogFooter>
