@@ -48,6 +48,34 @@ const FLASH_CLASSE: Record<"confirmado" | "duplicado" | "erro", string> = {
   erro: "bg-red-500/25",
 };
 
+// Extrai o prefixo literal de um regex de validação (ex.: "^TBR\d{9}$" -> "TBR").
+function prefixoLiteral(regexFonte: string): string {
+  const fonte = regexFonte.startsWith("^") ? regexFonte.slice(1) : regexFonte;
+  let prefixo = "";
+  for (const caractere of fonte) {
+    if (/[\\^$.*+?()[\]{}|]/.test(caractere)) break;
+    prefixo += caractere;
+  }
+  return prefixo;
+}
+
+// Se o regex for "prefixo + \d{N}", retorna o comprimento total esperado.
+// Para formatos que não seguem esse padrão, retorna null (sem corte por tamanho).
+function comprimentoMaximo(regexFonte: string, prefixo: string): number | null {
+  let fonte = regexFonte.startsWith("^") ? regexFonte.slice(1) : regexFonte;
+  if (fonte.endsWith("$")) fonte = fonte.slice(0, -1);
+  const resto = fonte.slice(prefixo.length);
+  const match = /^\\d\{(\d+)\}$/.exec(resto);
+  return match ? prefixo.length + Number(match[1]) : null;
+}
+
+// Compara apenas a parte já digitada com o prefixo esperado (prefixo incompleto = válido).
+function prefixoAindaValido(prefixo: string, valorAtual: string): boolean {
+  if (!prefixo) return true;
+  const tamanho = Math.min(prefixo.length, valorAtual.length);
+  return prefixo.slice(0, tamanho) === valorAtual.slice(0, tamanho);
+}
+
 function lerEstadoLocal(
   operacaoId: string
 ): { rotaAtivaId?: string; motoristasPorRota?: Record<string, string> } {
@@ -392,9 +420,22 @@ export function BipagemConsole({
 
   function handleCodigoChange(novoValor: string) {
     setCodigoInput(novoValor);
-    if (regexValidacao && new RegExp(regexValidacao).test(novoValor)) {
+    if (!regexValidacao) return;
+
+    if (new RegExp(regexValidacao).test(novoValor)) {
       setCodigoInput("");
       void processarCodigo(novoValor);
+      return;
+    }
+
+    const prefixo = prefixoLiteral(regexValidacao);
+    const maximo = comprimentoMaximo(regexValidacao, prefixo);
+    const formatoJaInvalido =
+      !prefixoAindaValido(prefixo, novoValor) || (maximo !== null && novoValor.length > maximo);
+
+    if (formatoJaInvalido) {
+      setCodigoInput("");
+      adicionarEventoSessao(novoValor, "erro");
     }
   }
 
