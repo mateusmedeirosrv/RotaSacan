@@ -21,13 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -55,7 +48,9 @@ const FLASH_CLASSE: Record<"confirmado" | "duplicado" | "erro", string> = {
   erro: "bg-red-500/25",
 };
 
-function lerEstadoLocal(operacaoId: string): { rotaAtivaId?: string; motoristaAtivoId?: string } {
+function lerEstadoLocal(
+  operacaoId: string
+): { rotaAtivaId?: string; motoristasPorRota?: Record<string, string> } {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(`rotascan:bipagem:${operacaoId}`);
@@ -89,9 +84,10 @@ export function BipagemConsole({
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const motivoInputRef = useRef<HTMLInputElement>(null);
 
   const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
-  const [motoristaAtivoId, setMotoristaAtivoId] = useState("");
+  const [motoristasPorRota, setMotoristasPorRota] = useState<Record<string, string>>({});
   const [codigoInput, setCodigoInput] = useState("");
   const [motivoInput, setMotivoInput] = useState("");
   const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
@@ -104,6 +100,9 @@ export function BipagemConsole({
   const [online, setOnline] = useState(true);
 
   const motoristaObrigatorio = tipoEvento !== "RECEBIMENTO";
+  const seletorRotaVisivel = tipoEvento !== "RECEBIMENTO";
+  const motivoVisivel = tipoEvento === "RETORNO" || tipoEvento === "DEVOLUCAO_ORIGEM";
+  const motoristaAtivoId = motoristasPorRota[rotaAtivaId] ?? "";
 
   const hidratadoRef = useRef(false);
 
@@ -114,18 +113,22 @@ export function BipagemConsole({
       setRotaAtivaId((atual) =>
         salva.rotaAtivaId && rotas.some((r) => r.id === salva.rotaAtivaId) ? salva.rotaAtivaId : atual
       );
-      setMotoristaAtivoId((atual) =>
-        salva.motoristaAtivoId && motoristas.some((m) => m.id === salva.motoristaAtivoId)
-          ? salva.motoristaAtivoId
+      setMotoristasPorRota((atual) =>
+        salva.motoristasPorRota
+          ? Object.fromEntries(
+              Object.entries(salva.motoristasPorRota).filter(([, motoristaId]) =>
+                motoristas.some((m) => m.id === motoristaId)
+              )
+            )
           : atual
       );
       return;
     }
     localStorage.setItem(
       `rotascan:bipagem:${operacaoId}`,
-      JSON.stringify({ rotaAtivaId, motoristaAtivoId })
+      JSON.stringify({ rotaAtivaId, motoristasPorRota })
     );
-  }, [operacaoId, rotaAtivaId, motoristaAtivoId, rotas, motoristas]);
+  }, [operacaoId, rotaAtivaId, motoristasPorRota, rotas, motoristas]);
 
   useEffect(() => {
     function aoMudarConexao() {
@@ -221,10 +224,16 @@ export function BipagemConsole({
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
-  // Rede de segurança: o foco do scanner nunca pode ficar perdido.
+  // Rede de segurança: o foco do scanner nunca pode ficar perdido — exceto
+  // enquanto o colaborador está digitando no campo Motivo.
   useEffect(() => {
     const id = setInterval(() => {
-      if (!overlayRotaAberto && !overrideAberto && document.activeElement !== inputRef.current) {
+      if (
+        !overlayRotaAberto &&
+        !overrideAberto &&
+        document.activeElement !== inputRef.current &&
+        document.activeElement !== motivoInputRef.current
+      ) {
         inputRef.current?.focus();
       }
     }, 750);
@@ -232,6 +241,7 @@ export function BipagemConsole({
   }, [overlayRotaAberto, overrideAberto]);
 
   useEffect(() => {
+    if (!seletorRotaVisivel) return;
     function handler(e: KeyboardEvent) {
       if (e.key === "F2" && !overrideAberto) {
         e.preventDefault();
@@ -241,7 +251,7 @@ export function BipagemConsole({
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [overrideAberto, rotaAtivaId, rotas]);
+  }, [seletorRotaVisivel, overrideAberto, rotaAtivaId, rotas]);
 
   useEffect(() => {
     if (!overlayRotaAberto) return;
@@ -301,7 +311,7 @@ export function BipagemConsole({
       tipo_evento: tipoEvento,
       colaborador_id: colaboradorId,
       override_aplicado: overrideAplicado,
-      motivo: tipoEvento === "RETORNO" ? motivoInput.trim() || null : null,
+      motivo: motivoVisivel ? motivoInput.trim() || null : null,
     });
 
     if (resultado.status === "confirmado") {
@@ -378,6 +388,14 @@ export function BipagemConsole({
     const codigo = codigoInput;
     setCodigoInput("");
     await processarCodigo(codigo);
+  }
+
+  function handleCodigoChange(novoValor: string) {
+    setCodigoInput(novoValor);
+    if (regexValidacao && new RegExp(regexValidacao).test(novoValor)) {
+      setCodigoInput("");
+      void processarCodigo(novoValor);
+    }
   }
 
   async function confirmarOverride() {
@@ -460,51 +478,60 @@ export function BipagemConsole({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {rotas.map((rota) => (
-          <button
-            key={rota.id}
-            type="button"
-            onClick={() => {
-              setRotaAtivaId(rota.id);
-              focarInput();
-            }}
-            className={cn(
-              "rounded-md border px-3 py-1.5 text-sm",
-              rota.id === rotaAtivaId ? "border-foreground bg-foreground text-background" : "text-muted-foreground"
-            )}
-          >
-            {rota.nome} · {(contagens?.[rota.id] ?? 0) + (pendentesPorRota[rota.id] ?? 0)}
-          </button>
-        ))}
-        <span className="text-xs text-muted-foreground">(F2 para trocar de rota)</span>
-      </div>
-
-      {motoristaObrigatorio && (
-        <div className="max-w-xs space-y-1">
-          <Label htmlFor="motorista_ativo">Motorista</Label>
-          <Select value={motoristaAtivoId} onValueChange={(value) => setMotoristaAtivoId(value ?? "")}>
-            <SelectTrigger id="motorista_ativo" className="w-full">
-              <SelectValue placeholder="Selecione o motorista">
-                {(value: string) => motoristas.find((m) => m.id === value)?.nome ?? "Selecione o motorista"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {motoristas.map((motorista) => (
-                <SelectItem key={motorista.id} value={motorista.id}>
-                  {motorista.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {seletorRotaVisivel && (
+        <div className="flex flex-wrap items-center gap-2">
+          {rotas.map((rota) => (
+            <button
+              key={rota.id}
+              type="button"
+              onClick={() => {
+                setRotaAtivaId(rota.id);
+                focarInput();
+              }}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-sm",
+                rota.id === rotaAtivaId ? "border-foreground bg-foreground text-background" : "text-muted-foreground"
+              )}
+            >
+              {rota.nome} · {(contagens?.[rota.id] ?? 0) + (pendentesPorRota[rota.id] ?? 0)}
+            </button>
+          ))}
+          <span className="text-xs text-muted-foreground">(F2 para trocar de rota)</span>
         </div>
       )}
 
-      {tipoEvento === "RETORNO" && (
+      {motoristaObrigatorio && (
+        <div className="space-y-1">
+          <Label>Motorista (rota: {rotas.find((r) => r.id === rotaAtivaId)?.nome ?? "—"})</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            {motoristas.map((motorista) => (
+              <button
+                key={motorista.id}
+                type="button"
+                onClick={() => {
+                  setMotoristasPorRota((m) => ({ ...m, [rotaAtivaId]: motorista.id }));
+                  focarInput();
+                }}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-sm",
+                  motorista.id === motoristaAtivoId
+                    ? "border-foreground bg-foreground text-background"
+                    : "text-muted-foreground"
+                )}
+              >
+                {motorista.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {motivoVisivel && (
         <div className="max-w-xs space-y-1">
-          <Label htmlFor="motivo_retorno">Motivo (opcional)</Label>
+          <Label htmlFor="motivo">Motivo (opcional)</Label>
           <Input
-            id="motivo_retorno"
+            id="motivo"
+            ref={motivoInputRef}
             value={motivoInput}
             onChange={(e) => setMotivoInput(e.target.value)}
             placeholder="Ex.: cliente ausente"
@@ -517,7 +544,7 @@ export function BipagemConsole({
           ref={inputRef}
           autoFocus
           value={codigoInput}
-          onChange={(e) => setCodigoInput(e.target.value)}
+          onChange={(e) => handleCodigoChange(e.target.value)}
           placeholder="Bipe o código aqui"
           className="h-14 text-lg"
           autoComplete="off"
@@ -562,7 +589,7 @@ export function BipagemConsole({
         ))}
       </ul>
 
-      {overlayRotaAberto && (
+      {seletorRotaVisivel && overlayRotaAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-72 rounded-lg border bg-popover p-2 text-popover-foreground">
             {rotas.map((rota, i) => (

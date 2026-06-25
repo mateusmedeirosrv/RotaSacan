@@ -59,6 +59,7 @@ export default async function OperacaoDetalhePage({
           .select("id, nome")
           .eq("galpao_id", operacao.galpao_id)
           .eq("ativa", true)
+          .eq("eh_recebimento", ehRecebimento)
           .order("nome"),
         supabase
           .from("motoristas")
@@ -93,32 +94,14 @@ export default async function OperacaoDetalhePage({
     };
   }
 
-  let conferencia: { encontradas: number; faltantes: number; extras: number } | null =
-    null;
-
-  if (ehRecebimento && finalizada && manifesto) {
-    const [{ data: itensManifesto }, { data: bipagens }] = await Promise.all([
-      supabase.from("manifesto_itens").select("codigo").eq("manifesto_id", manifesto.id),
-      supabase
-        .from("bipagens")
-        .select("codigo")
-        .eq("operacao_id", id)
-        .eq("tipo_evento", "RECEBIMENTO"),
-    ]);
-
-    const codigosManifesto = new Set((itensManifesto ?? []).map((i) => i.codigo));
-    const codigosBipados = new Set((bipagens ?? []).map((b) => b.codigo));
-
-    const encontradas = [...codigosManifesto].filter((c) =>
-      codigosBipados.has(c)
-    ).length;
-    const faltantes = codigosManifesto.size - encontradas;
-    const extras = [...codigosBipados].filter(
-      (c) => !codigosManifesto.has(c)
-    ).length;
-
-    conferencia = { encontradas, faltantes, extras };
-  }
+  const conferencia =
+    ehRecebimento && manifesto
+      ? {
+          encontradas: manifesto.encontradas,
+          faltantes: manifesto.faltantes,
+          extras: manifesto.extras,
+        }
+      : null;
 
   return (
     <main className="space-y-6 p-6">
@@ -149,6 +132,10 @@ export default async function OperacaoDetalhePage({
             <p className="text-sm text-muted-foreground">
               {manifesto.nome_arquivo} — {manifesto.total_itens} item(ns)
               importado(s)
+            </p>
+          ) : finalizada ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum manifesto importado.
             </p>
           ) : (
             <ManifestoUpload operacaoId={operacao.id} />

@@ -16,7 +16,7 @@ export default async function RotasPage() {
 
   const [{ data: rotas }, { data: galpoes }, { data: rotaBairros }] =
     await Promise.all([
-      supabase.from("rotas").select("*").order("nome"),
+      supabase.from("rotas").select("*").eq("eh_recebimento", false).order("nome"),
       supabase.from("galpoes").select("*").order("nome"),
       supabase.from("rota_bairros").select("rota_id"),
     ]);

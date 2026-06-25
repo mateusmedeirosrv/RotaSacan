@@ -4,12 +4,13 @@ import { useRef, useState } from "react";
 import { read, utils } from "xlsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { importarManifesto } from "./actions";
+import { importarManifesto, prevalidarManifesto } from "./actions";
 
 const CHAVES_CODIGO = ["codigo", "código", "code", "sku", "cod"];
 const CHAVES_DESCRICAO = ["descricao", "descrição", "description", "desc", "produto", "item"];
 
 type ItemDetectado = { codigo: string; descricao: string | null };
+type Preview = { encontradas: number; extras: number; faltantes: number };
 
 function normalizar(texto: string) {
   return texto.trim().toLowerCase();
@@ -54,7 +55,15 @@ export function ManifestoUpload({ operacaoId }: { operacaoId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemDetectado[] | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [validando, setValidando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+
+  function limpar() {
+    setNomeArquivo(null);
+    setItens(null);
+    setPreview(null);
+  }
 
   async function handleArquivo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -67,13 +76,23 @@ export function ManifestoUpload({ operacaoId }: { operacaoId: string }) {
 
     if (!itensDetectados.length) {
       toast.error("Não foi possível identificar códigos na planilha.");
-      setNomeArquivo(null);
-      setItens(null);
+      limpar();
       return;
     }
 
     setNomeArquivo(file.name);
     setItens(itensDetectados);
+    setValidando(true);
+    const result = await prevalidarManifesto(operacaoId, itensDetectados);
+    setValidando(false);
+
+    if (result.error || !result.preview) {
+      toast.error(result.error ?? "Não foi possível validar o manifesto.");
+      limpar();
+      return;
+    }
+
+    setPreview(result.preview);
   }
 
   async function handleConfirmar() {
@@ -88,8 +107,7 @@ export function ManifestoUpload({ operacaoId }: { operacaoId: string }) {
     }
 
     toast.success("Manifesto importado.");
-    setNomeArquivo(null);
-    setItens(null);
+    limpar();
   }
 
   return (
@@ -117,8 +135,27 @@ export function ManifestoUpload({ operacaoId }: { operacaoId: string }) {
           <p className="text-sm text-muted-foreground">
             {nomeArquivo} — {itens.length} código(s) detectado(s)
           </p>
+
+          {validando ? (
+            <p className="text-sm text-muted-foreground">Validando códigos...</p>
+          ) : preview ? (
+            <div className="flex gap-6 text-sm">
+              <span>
+                <span className="font-medium">{preview.encontradas}</span> já recebido(s)
+              </span>
+              <span>
+                <span className="font-medium">{preview.extras}</span> serão confirmados
+                automaticamente
+              </span>
+              <span>
+                <span className="font-medium">{preview.faltantes}</span> com código inválido
+                (não serão confirmados)
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex gap-2">
-            <Button type="button" disabled={enviando} onClick={handleConfirmar}>
+            <Button type="button" disabled={enviando || validando || !preview} onClick={handleConfirmar}>
               {enviando ? "Importando..." : "Confirmar importação"}
             </Button>
             <Button
@@ -126,8 +163,7 @@ export function ManifestoUpload({ operacaoId }: { operacaoId: string }) {
               variant="ghost"
               disabled={enviando}
               onClick={() => {
-                setNomeArquivo(null);
-                setItens(null);
+                limpar();
                 if (inputRef.current) inputRef.current.value = "";
               }}
             >

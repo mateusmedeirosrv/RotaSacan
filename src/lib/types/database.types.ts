@@ -136,9 +136,12 @@ export interface Database {
           galpao_id: string;
           nome: string;
           ativa: boolean;
+          eh_recebimento: boolean;
           criada_em: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["rotas"]["Row"], "id" | "criada_em">;
+        Insert: Omit<Database["public"]["Tables"]["rotas"]["Row"], "id" | "criada_em" | "eh_recebimento"> & {
+          eh_recebimento?: boolean;
+        };
         Update: Partial<Database["public"]["Tables"]["rotas"]["Insert"]>;
         Relationships: [];
       };
@@ -202,9 +205,19 @@ export interface Database {
           operacao_id: string;
           nome_arquivo: string;
           total_itens: number;
+          encontradas: number;
+          faltantes: number;
+          extras: number;
           importado_em: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["manifestos"]["Row"], "id" | "importado_em">;
+        Insert: Omit<
+          Database["public"]["Tables"]["manifestos"]["Row"],
+          "id" | "importado_em" | "encontradas" | "faltantes" | "extras"
+        > & {
+          encontradas?: number;
+          faltantes?: number;
+          extras?: number;
+        };
         Update: Partial<Database["public"]["Tables"]["manifestos"]["Insert"]>;
         Relationships: [];
       };
