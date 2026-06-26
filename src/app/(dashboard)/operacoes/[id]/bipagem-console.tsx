@@ -112,13 +112,15 @@ export function BipagemConsole({
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
-  const motivoInputRef = useRef<HTMLInputElement>(null);
+  const motivoDialogInputRef = useRef<HTMLInputElement>(null);
   const travadoRef = useRef(false);
 
   const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
   const [motoristasPorRota, setMotoristasPorRota] = useState<Record<string, string>>({});
   const [codigoInput, setCodigoInput] = useState(""); // mantido só para handleSubmit via Enter
-  const [motivoInput, setMotivoInput] = useState("");
+  const [motivoDialogAberto, setMotivoDialogAberto] = useState(false);
+  const [motivoCodigoPendente, setMotivoCodigoPendente] = useState<string | null>(null);
+  const [motivoTexto, setMotivoTexto] = useState("");
   const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
   const [overlayIndice, setOverlayIndice] = useState(0);
   const [flash, setFlash] = useState<"confirmado" | "duplicado" | "erro" | null>(null);
@@ -285,14 +287,15 @@ export function BipagemConsole({
       if (
         !overlayRotaAberto &&
         !overrideAberto &&
+        !motivoDialogAberto &&
         document.activeElement !== inputRef.current &&
-        document.activeElement !== motivoInputRef.current
+        document.activeElement !== motivoDialogInputRef.current
       ) {
         inputRef.current?.focus();
       }
     }, 750);
     return () => clearInterval(id);
-  }, [overlayRotaAberto, overrideAberto]);
+  }, [overlayRotaAberto, overrideAberto, motivoDialogAberto]);
 
   useEffect(() => {
     if (!seletorRotaVisivel) return;
@@ -355,7 +358,7 @@ export function BipagemConsole({
     );
   }
 
-  async function inserir(codigo: string, overrideAplicado: boolean) {
+  async function inserir(codigo: string, overrideAplicado: boolean, motivo: string | null = null) {
     const resultado = await registrarBipagem(supabase, {
       operacao_id: operacaoId,
       rota_id: rotaAtivaId,
@@ -365,7 +368,7 @@ export function BipagemConsole({
       tipo_evento: tipoEvento,
       colaborador_id: colaboradorId,
       override_aplicado: overrideAplicado,
-      motivo: motivoVisivel ? motivoInput.trim() || null : null,
+      motivo,
     });
 
     if (resultado.status === "confirmado") {
@@ -435,7 +438,24 @@ export function BipagemConsole({
       }
     }
 
+    if (motivoVisivel) {
+      setMotivoCodigoPendente(codigo);
+      setMotivoDialogAberto(true);
+      return;
+    }
+
     await inserir(codigo, false);
+  }
+
+  async function confirmarMotivo() {
+    if (!motivoCodigoPendente) return;
+    const motivo = motivoTexto.trim() || null;
+    const codigo = motivoCodigoPendente;
+    setMotivoDialogAberto(false);
+    setMotivoCodigoPendente(null);
+    setMotivoTexto("");
+    await inserir(codigo, false, motivo);
+    focarInput();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -630,18 +650,6 @@ export function BipagemConsole({
         </div>
       )}
 
-      {motivoVisivel && (
-        <div className="max-w-xs space-y-1">
-          <Label htmlFor="motivo">Motivo (opcional)</Label>
-          <Input
-            id="motivo"
-            ref={motivoInputRef}
-            value={motivoInput}
-            onChange={(e) => setMotivoInput(e.target.value)}
-            placeholder="Ex.: cliente ausente"
-          />
-        </div>
-      )}
 
       <form onSubmit={handleSubmit}>
         {/* input nativo obrigatório: Base UI (@base-ui/react/input) não expõe o DOM
@@ -719,6 +727,42 @@ export function BipagemConsole({
           </div>
         </div>
       )}
+
+      <Dialog
+        open={motivoDialogAberto}
+        onOpenChange={(open) => {
+          setMotivoDialogAberto(open);
+          if (!open) {
+            setMotivoCodigoPendente(null);
+            setMotivoTexto("");
+            focarInput();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Motivo</DialogTitle>
+            <DialogDescription>
+              Código: <strong>{motivoCodigoPendente}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            ref={motivoDialogInputRef}
+            value={motivoTexto}
+            onChange={(e) => setMotivoTexto(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && confirmarMotivo()}
+            placeholder="Ex.: cliente ausente (opcional)"
+            autoFocus
+            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setMotivoDialogAberto(false); setMotivoCodigoPendente(null); setMotivoTexto(""); focarInput(); }}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarMotivo}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={overrideAberto}
