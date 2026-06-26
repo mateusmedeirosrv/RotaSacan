@@ -113,6 +113,7 @@ export function BipagemConsole({
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const motivoInputRef = useRef<HTMLInputElement>(null);
+  const travadoRef = useRef(false);
 
   const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
   const [motoristasPorRota, setMotoristasPorRota] = useState<Record<string, string>>({});
@@ -419,45 +420,66 @@ export function BipagemConsole({
     await processarCodigo(codigo);
   }
 
+  function dispararErroFormato(valorInvalido: string) {
+    // Trava a entrada por 120ms para engolir o restante do burst do scanner
+    travadoRef.current = true;
+    if (inputRef.current) inputRef.current.value = "";
+    setCodigoInput("");
+    adicionarEventoSessao(valorInvalido, "erro");
+    setTimeout(() => {
+      if (inputRef.current) inputRef.current.value = "";
+      travadoRef.current = false;
+      inputRef.current?.focus();
+    }, 120);
+  }
+
   function handleCodigoChange(novoValor: string) {
-    setCodigoInput(novoValor);
-    if (!novoValor) return;
+    // Descarta entrada enquanto travado (absorve burst do scanner após erro)
+    if (travadoRef.current) {
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    // Normaliza para maiúsculo diretamente no DOM (igual ao app HTML de referência)
+    const up = novoValor.toUpperCase();
+    if (inputRef.current) inputRef.current.value = up;
+    setCodigoInput(up);
+
+    if (!up) return;
 
     if (regexValidacao) {
-      // Código válido e completo: processa imediatamente
-      if (new RegExp(regexValidacao, "i").test(novoValor)) {
+      if (new RegExp(regexValidacao, "i").test(up)) {
         setCodigoInput("");
-        void processarCodigo(novoValor);
+        if (inputRef.current) inputRef.current.value = "";
+        void processarCodigo(up);
         return;
       }
-
-      // Prefixo ou tamanho já inválido: erro imediato
       const prefixo = prefixoLiteral(regexValidacao);
       const maximo = comprimentoMaximo(regexValidacao, prefixo);
       const invalido =
-        !prefixoAindaValido(prefixo.toUpperCase(), novoValor.toUpperCase()) ||
-        (maximo !== null && novoValor.length > maximo);
-      if (invalido) {
-        setCodigoInput("");
-        adicionarEventoSessao(novoValor, "erro");
-      }
+        !prefixoAindaValido(prefixo.toUpperCase(), up) ||
+        (maximo !== null && up.length > maximo);
+      if (invalido) dispararErroFormato(up);
       return;
     }
 
-    // Sem regex configurado: valida formato TBR diretamente (case-insensitive)
-    // Formato esperado: TBR + 9 dígitos = 12 caracteres
-    if (/^[Tt][Bb][Rr]\d{9}$/.test(novoValor)) {
+    // Sem regex: valida formato TBR diretamente (TBR + 9 dígitos = 12 chars)
+    if (/^TBR\d{9}$/.test(up)) {
       setCodigoInput("");
-      void processarCodigo(novoValor);
+      if (inputRef.current) inputRef.current.value = "";
+      void processarCodigo(up);
       return;
     }
 
-    const prefixoDigitado = novoValor.slice(0, Math.min(3, novoValor.length)).toUpperCase();
+    const prefixoDigitado = up.slice(0, Math.min(3, up.length));
     const prefixoEsperado = "TBR".slice(0, prefixoDigitado.length);
-    if (prefixoDigitado !== prefixoEsperado || novoValor.length > 12) {
-      setCodigoInput("");
-      adicionarEventoSessao(novoValor, "erro");
+    if (prefixoDigitado !== prefixoEsperado || up.length > 12) {
+      dispararErroFormato(up);
     }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (travadoRef.current) e.preventDefault();
   }
 
   async function confirmarOverride() {
@@ -607,6 +629,7 @@ export function BipagemConsole({
           autoFocus
           value={codigoInput}
           onChange={(e) => handleCodigoChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Bipe o código aqui"
           className="h-14 text-lg"
           autoComplete="off"
