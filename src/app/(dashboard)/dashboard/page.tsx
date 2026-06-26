@@ -24,13 +24,14 @@ export default async function DashboardPage({
 
   const dataInicio = params.data_inicio || inicioDoMes();
   const dataFim = params.data_fim || hoje();
-  const galpaoId = params.galpao_id;
-  const transportadoraId = params.transportadora_id;
-  const tipoEvento = params.tipo_evento as TipoEvento | undefined;
-  const operacaoId = params.operacao_id;
-  const rotaId = params.rota_id;
-  const colaboradorId = params.colaborador_id;
-  const motoristaId = params.motorista_id;
+
+  const galpaoIds        = params.galpoes?.split(",").filter(Boolean) ?? [];
+  const transportadoraIds = params.transportadoras?.split(",").filter(Boolean) ?? [];
+  const tiposEvento      = (params.tipos?.split(",").filter(Boolean) ?? []) as TipoEvento[];
+  const operacaoIds      = params.operacoes?.split(",").filter(Boolean) ?? [];
+  const rotaIds          = params.rotas?.split(",").filter(Boolean) ?? [];
+  const colaboradorIds   = params.colaboradores?.split(",").filter(Boolean) ?? [];
+  const motoristaIds     = params.motoristas?.split(",").filter(Boolean) ?? [];
 
   const [
     { data: galpoes },
@@ -54,15 +55,15 @@ export default async function DashboardPage({
     supabase.from("colaboradores").select("id, nome").order("nome"),
     supabase.from("motoristas").select("id, nome").order("nome"),
     supabase.rpc("dashboard_kpis", {
-      p_data_inicio: dataInicio,
-      p_data_fim: dataFim,
-      p_galpao_id: galpaoId ?? null,
-      p_transportadora_id: transportadoraId ?? null,
-      p_tipo_evento: tipoEvento ?? null,
-      p_operacao_id: operacaoId ?? null,
-      p_rota_id: rotaId ?? null,
-      p_colaborador_id: colaboradorId ?? null,
-      p_motorista_id: motoristaId ?? null,
+      p_data_inicio:        dataInicio,
+      p_data_fim:           dataFim,
+      p_galpao_ids:         galpaoIds.length > 0 ? galpaoIds : null,
+      p_transportadora_ids: transportadoraIds.length > 0 ? transportadoraIds : null,
+      p_tipos_evento:       tiposEvento.length > 0 ? tiposEvento : null,
+      p_operacao_ids:       operacaoIds.length > 0 ? operacaoIds : null,
+      p_rota_ids:           rotaIds.length > 0 ? rotaIds : null,
+      p_colaborador_ids:    colaboradorIds.length > 0 ? colaboradorIds : null,
+      p_motorista_ids:      motoristaIds.length > 0 ? motoristaIds : null,
     }),
   ]);
 
@@ -102,32 +103,32 @@ export default async function DashboardPage({
         <ExportarExcelButton
           dataInicio={dataInicio}
           dataFim={dataFim}
-          galpaoId={galpaoId}
-          transportadoraId={transportadoraId}
-          tipoEvento={tipoEvento}
-          operacaoId={operacaoId}
-          rotaId={rotaId}
-          colaboradorId={colaboradorId}
-          motoristaId={motoristaId}
+          galpaoIds={galpaoIds}
+          transportadoraIds={transportadoraIds}
+          tiposEvento={tiposEvento}
+          operacaoIds={operacaoIds}
+          rotaIds={rotaIds}
+          colaboradorIds={colaboradorIds}
+          motoristaIds={motoristaIds}
         />
       </div>
 
       <DashboardFiltros
         dataInicio={dataInicio}
         dataFim={dataFim}
-        galpaoId={galpaoId}
-        transportadoraId={transportadoraId}
-        tipoEvento={tipoEvento}
-        operacaoId={operacaoId}
-        rotaId={rotaId}
-        colaboradorId={colaboradorId}
-        motoristaId={motoristaId}
         galpoes={galpoes}
         transportadoras={transportadoras ?? []}
         operacoes={operacoes}
         rotas={rotas ?? []}
         colaboradores={colaboradores ?? []}
         motoristas={motoristas ?? []}
+        galpoesSelecionados={galpaoIds}
+        transportadorasSelecionadas={transportadoraIds}
+        tiposSelecionados={tiposEvento}
+        operacoesSelecionadas={operacaoIds}
+        rotasSelecionadas={rotaIds}
+        colaboradoresSelecionados={colaboradorIds}
+        motoristasSelecionados={motoristaIds}
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">

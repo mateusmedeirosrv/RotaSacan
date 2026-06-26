@@ -284,13 +284,13 @@ export interface Database {
         Args: {
           p_data_inicio: string;
           p_data_fim: string;
-          p_galpao_id?: string | null;
-          p_transportadora_id?: string | null;
-          p_tipo_evento?: TipoEvento | null;
-          p_operacao_id?: string | null;
-          p_rota_id?: string | null;
-          p_colaborador_id?: string | null;
-          p_motorista_id?: string | null;
+          p_galpao_ids?: string[] | null;
+          p_transportadora_ids?: string[] | null;
+          p_tipos_evento?: TipoEvento[] | null;
+          p_operacao_ids?: string[] | null;
+          p_rota_ids?: string[] | null;
+          p_colaborador_ids?: string[] | null;
+          p_motorista_ids?: string[] | null;
         };
         Returns: DashboardKpis;
       };
@@ -298,13 +298,13 @@ export interface Database {
         Args: {
           p_data_inicio: string;
           p_data_fim: string;
-          p_galpao_id?: string | null;
-          p_transportadora_id?: string | null;
-          p_tipo_evento?: TipoEvento | null;
-          p_operacao_id?: string | null;
-          p_rota_id?: string | null;
-          p_colaborador_id?: string | null;
-          p_motorista_id?: string | null;
+          p_galpao_ids?: string[] | null;
+          p_transportadora_ids?: string[] | null;
+          p_tipos_evento?: TipoEvento[] | null;
+          p_operacao_ids?: string[] | null;
+          p_rota_ids?: string[] | null;
+          p_colaborador_ids?: string[] | null;
+          p_motorista_ids?: string[] | null;
         };
         Returns: DashboardBipagensExport;
       };

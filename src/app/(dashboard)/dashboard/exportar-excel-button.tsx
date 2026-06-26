@@ -10,23 +10,23 @@ import type { TipoEvento } from "@/lib/types/database.types";
 export function ExportarExcelButton({
   dataInicio,
   dataFim,
-  galpaoId,
-  transportadoraId,
-  tipoEvento,
-  operacaoId,
-  rotaId,
-  colaboradorId,
-  motoristaId,
+  galpaoIds,
+  transportadoraIds,
+  tiposEvento,
+  operacaoIds,
+  rotaIds,
+  colaboradorIds,
+  motoristaIds,
 }: {
   dataInicio: string;
   dataFim: string;
-  galpaoId?: string;
-  transportadoraId?: string;
-  tipoEvento?: TipoEvento;
-  operacaoId?: string;
-  rotaId?: string;
-  colaboradorId?: string;
-  motoristaId?: string;
+  galpaoIds: string[];
+  transportadoraIds: string[];
+  tiposEvento: TipoEvento[];
+  operacaoIds: string[];
+  rotaIds: string[];
+  colaboradorIds: string[];
+  motoristaIds: string[];
 }) {
   const [exportando, setExportando] = useState(false);
 
@@ -35,15 +35,15 @@ export function ExportarExcelButton({
     try {
       const supabase = createClient();
       const { data, error } = await supabase.rpc("dashboard_bipagens_export", {
-        p_data_inicio: dataInicio,
-        p_data_fim: dataFim,
-        p_galpao_id: galpaoId ?? null,
-        p_transportadora_id: transportadoraId ?? null,
-        p_tipo_evento: tipoEvento ?? null,
-        p_operacao_id: operacaoId ?? null,
-        p_rota_id: rotaId ?? null,
-        p_colaborador_id: colaboradorId ?? null,
-        p_motorista_id: motoristaId ?? null,
+        p_data_inicio:        dataInicio,
+        p_data_fim:           dataFim,
+        p_galpao_ids:         galpaoIds.length > 0 ? galpaoIds : null,
+        p_transportadora_ids: transportadoraIds.length > 0 ? transportadoraIds : null,
+        p_tipos_evento:       tiposEvento.length > 0 ? tiposEvento : null,
+        p_operacao_ids:       operacaoIds.length > 0 ? operacaoIds : null,
+        p_rota_ids:           rotaIds.length > 0 ? rotaIds : null,
+        p_colaborador_ids:    colaboradorIds.length > 0 ? colaboradorIds : null,
+        p_motorista_ids:      motoristaIds.length > 0 ? motoristaIds : null,
       });
 
       if (error) {
