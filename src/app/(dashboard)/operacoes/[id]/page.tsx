@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth/guards";
 import { ManifestoUpload } from "./manifesto-upload";
 import { FinalizarOperacaoButton } from "./finalizar-button";
 import { InativarOperacaoButton } from "./inativar-button";
+import { ExcluirOperacaoButton } from "./excluir-button";
 import { BipagemConsole } from "./bipagem-console";
 import { ConflitosSection } from "./conflitos-section";
 
@@ -127,6 +128,9 @@ export default async function OperacaoDetalhePage({
         <div className="flex items-center gap-2">
           {colaborador.papel === "admin" && (
             <InativarOperacaoButton operacaoId={operacao.id} ativa={operacao.ativa} />
+          )}
+          {colaborador.papel === "admin" && !operacao.ativa && (
+            <ExcluirOperacaoButton operacaoId={operacao.id} />
           )}
           {!finalizada && <FinalizarOperacaoButton operacaoId={operacao.id} />}
         </div>

@@ -255,3 +255,44 @@ export async function reativarOperacao(operacaoId: string) {
   revalidatePath("/operacoes/ativas");
   return { error: null };
 }
+
+export async function excluirOperacao(operacaoId: string) {
+  const supabase = await requireAdmin();
+
+  const { data: operacao } = await supabase
+    .from("operacoes")
+    .select("ativa")
+    .eq("id", operacaoId)
+    .maybeSingle();
+
+  if (!operacao) return { error: "Operação não encontrada." };
+  if (operacao.ativa) return { error: "Apenas operações inativas podem ser excluídas." };
+
+  // Deleta dependentes sem CASCADE: manifesto_itens → manifestos → bipagens → operacao
+  const { data: manifesto } = await supabase
+    .from("manifestos")
+    .select("id")
+    .eq("operacao_id", operacaoId)
+    .maybeSingle();
+
+  if (manifesto) {
+    await supabase.from("manifesto_itens").delete().eq("manifesto_id", manifesto.id);
+    await supabase.from("manifestos").delete().eq("id", manifesto.id);
+  }
+
+  await supabase.from("bipagens").delete().eq("operacao_id", operacaoId);
+
+  const { error } = await supabase.from("operacoes").delete().eq("id", operacaoId);
+
+  if (error) return { error: "Não foi possível excluir a operação." };
+
+  await registrarAuditoria(supabase, {
+    tipo: "operacao_excluida",
+    descricao: "Operação inativa excluída permanentemente pelo admin.",
+    dados: { operacao_id: operacaoId },
+  });
+
+  revalidatePath("/operacoes");
+  revalidatePath("/operacoes/ativas");
+  return { error: null };
+}
