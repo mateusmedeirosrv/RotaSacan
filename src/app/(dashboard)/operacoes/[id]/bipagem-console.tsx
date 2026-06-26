@@ -117,7 +117,7 @@ export function BipagemConsole({
 
   const [rotaAtivaId, setRotaAtivaId] = useState(() => rotas[0]?.id ?? "");
   const [motoristasPorRota, setMotoristasPorRota] = useState<Record<string, string>>({});
-  const [codigoInput, setCodigoInput] = useState("");
+  const [codigoInput, setCodigoInput] = useState(""); // mantido só para handleSubmit via Enter
   const [motivoInput, setMotivoInput] = useState("");
   const [overlayRotaAberto, setOverlayRotaAberto] = useState(false);
   const [overlayIndice, setOverlayIndice] = useState(0);
@@ -415,42 +415,43 @@ export function BipagemConsole({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const codigo = codigoInput;
-    setCodigoInput("");
+    const codigo = inputRef.current?.value ?? "";
+    if (inputRef.current) inputRef.current.value = "";
     await processarCodigo(codigo);
   }
 
-  function dispararErroFormato(valorInvalido: string) {
-    // Trava a entrada por 120ms para engolir o restante do burst do scanner
-    travadoRef.current = true;
+  function limparInput() {
     if (inputRef.current) inputRef.current.value = "";
-    setCodigoInput("");
+  }
+
+  function dispararErroFormato(valorInvalido: string) {
+    // Trava por 120ms para engolir o restante do burst do scanner
+    travadoRef.current = true;
+    limparInput();
     adicionarEventoSessao(valorInvalido, "erro");
     setTimeout(() => {
-      if (inputRef.current) inputRef.current.value = "";
+      limparInput();
       travadoRef.current = false;
       inputRef.current?.focus();
     }, 120);
   }
 
-  function handleCodigoChange(novoValor: string) {
-    // Descarta entrada enquanto travado (absorve burst do scanner após erro)
+  function handleCodigoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // Descarta tudo enquanto travado — absorve burst do scanner após erro
     if (travadoRef.current) {
-      if (inputRef.current) inputRef.current.value = "";
+      e.target.value = "";
       return;
     }
 
-    // Normaliza para maiúsculo diretamente no DOM (igual ao app HTML de referência)
-    const up = novoValor.toUpperCase();
-    if (inputRef.current) inputRef.current.value = up;
-    setCodigoInput(up);
+    // Normaliza para maiúsculo diretamente no DOM (sem passar por estado React)
+    const up = e.target.value.toUpperCase();
+    e.target.value = up;
 
     if (!up) return;
 
     if (regexValidacao) {
       if (new RegExp(regexValidacao, "i").test(up)) {
-        setCodigoInput("");
-        if (inputRef.current) inputRef.current.value = "";
+        limparInput();
         void processarCodigo(up);
         return;
       }
@@ -463,10 +464,9 @@ export function BipagemConsole({
       return;
     }
 
-    // Sem regex: valida formato TBR diretamente (TBR + 9 dígitos = 12 chars)
+    // Sem regex: valida TBR diretamente (TBR + 9 dígitos = 12 chars)
     if (/^TBR\d{9}$/.test(up)) {
-      setCodigoInput("");
-      if (inputRef.current) inputRef.current.value = "";
+      limparInput();
       void processarCodigo(up);
       return;
     }
@@ -627,8 +627,8 @@ export function BipagemConsole({
         <Input
           ref={inputRef}
           autoFocus
-          value={codigoInput}
-          onChange={(e) => handleCodigoChange(e.target.value)}
+          defaultValue=""
+          onChange={handleCodigoChange}
           onKeyDown={handleKeyDown}
           placeholder="Bipe o código aqui"
           className="h-14 text-lg"
