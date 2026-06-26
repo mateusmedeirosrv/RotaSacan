@@ -10,6 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { OperacaoFormDialog } from "./operacao-form";
+import { OperacoesFiltros } from "./operacoes-filtros";
+import type { TipoEvento, StatusOperacao } from "@/lib/types/database.types";
 
 const TIPO_EVENTO_LABEL: Record<string, string> = {
   RECEBIMENTO: "Recebimento",
@@ -18,19 +20,56 @@ const TIPO_EVENTO_LABEL: Record<string, string> = {
   RETORNO: "Retorno",
 };
 
-export default async function OperacoesPage() {
+export default async function OperacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { supabase, colaborador } = await requireAuth();
+  const params = await searchParams;
 
-  const [{ data: transportadoras }, { data: galpoes }, { data: operacoes }] =
-    await Promise.all([
-      supabase.from("transportadoras").select("*").order("nome"),
-      supabase.from("galpoes").select("*").order("nome"),
-      supabase
-        .from("operacoes")
-        .select("*")
-        .eq("colaborador_id", colaborador.id)
-        .order("iniciada_em", { ascending: false }),
-    ]);
+  const selectedColaboradores = params.colaboradores?.split(",").filter(Boolean) ?? [];
+  const selectedGalpoes = params.galpoes?.split(",").filter(Boolean) ?? [];
+  const selectedTransportadoras = params.transportadoras?.split(",").filter(Boolean) ?? [];
+  const selectedTipos = params.tipos?.split(",").filter(Boolean) ?? [];
+  const selectedStatus = params.status?.split(",").filter(Boolean) ?? [];
+  const selectedData = params.data ?? "";
+
+  let operacoesQuery = supabase
+    .from("operacoes")
+    .select("*")
+    .order("iniciada_em", { ascending: false });
+
+  if (selectedColaboradores.length > 0) {
+    operacoesQuery = operacoesQuery.in("colaborador_id", selectedColaboradores);
+  }
+  if (selectedGalpoes.length > 0) {
+    operacoesQuery = operacoesQuery.in("galpao_id", selectedGalpoes);
+  }
+  if (selectedTransportadoras.length > 0) {
+    operacoesQuery = operacoesQuery.in("transportadora_id", selectedTransportadoras);
+  }
+  if (selectedTipos.length > 0) {
+    operacoesQuery = operacoesQuery.in("tipo_evento", selectedTipos as TipoEvento[]);
+  }
+  if (selectedStatus.length > 0) {
+    operacoesQuery = operacoesQuery.in("status", selectedStatus as StatusOperacao[]);
+  }
+  if (selectedData) {
+    operacoesQuery = operacoesQuery.eq("data", selectedData);
+  }
+
+  const [
+    { data: transportadoras },
+    { data: galpoes },
+    { data: colaboradores },
+    { data: operacoes },
+  ] = await Promise.all([
+    supabase.from("transportadoras").select("*").order("nome"),
+    supabase.from("galpoes").select("*").order("nome"),
+    supabase.from("colaboradores").select("id, nome").order("nome"),
+    operacoesQuery,
+  ]);
 
   const transportadorasAtivas = (transportadoras ?? []).filter((t) => t.ativo);
   const galpoesAtivos = (galpoes ?? []).filter((g) => g.ativo);
@@ -52,6 +91,8 @@ export default async function OperacoesPage() {
       (quantidadePorOperacao.get(bipagem.operacao_id) ?? 0) + 1
     );
   }
+
+  const colaboradorMap = new Map((colaboradores ?? []).map((c) => [c.id, c.nome]));
 
   return (
     <main className="space-y-4 p-6">
@@ -83,9 +124,22 @@ export default async function OperacoesPage() {
         </p>
       )}
 
+      <OperacoesFiltros
+        colaboradores={colaboradores ?? []}
+        galpoes={galpoes ?? []}
+        transportadoras={transportadoras ?? []}
+        colaboradoresSelecionados={selectedColaboradores}
+        galpoesSelecionados={selectedGalpoes}
+        transportadorasSelecionadas={selectedTransportadoras}
+        tiposSelecionados={selectedTipos}
+        statusSelecionados={selectedStatus}
+        dataSelecionada={selectedData}
+      />
+
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Colaborador</TableHead>
             <TableHead>Galpão</TableHead>
             <TableHead>Transportadora</TableHead>
             <TableHead>Tipo</TableHead>
@@ -104,6 +158,7 @@ export default async function OperacoesPage() {
               const galpao = galpoes?.find((g) => g.id === operacao.galpao_id);
               return (
                 <TableRow key={operacao.id}>
+                  <TableCell>{colaboradorMap.get(operacao.colaborador_id) ?? "—"}</TableCell>
                   <TableCell>{galpao?.nome ?? "—"}</TableCell>
                   <TableCell>{transportadora?.nome ?? "—"}</TableCell>
                   <TableCell>{TIPO_EVENTO_LABEL[operacao.tipo_evento]}</TableCell>
@@ -133,7 +188,7 @@ export default async function OperacoesPage() {
           ) : (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 className="text-center text-muted-foreground"
               >
                 Nenhuma operação ainda.
