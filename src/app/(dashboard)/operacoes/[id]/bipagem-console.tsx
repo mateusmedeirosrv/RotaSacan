@@ -172,6 +172,31 @@ export function BipagemConsole({
     };
   }, []);
 
+  // Wake Lock: impede a tela de apagar durante a bipagem
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+
+    async function ativarWakeLock() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+        }
+      } catch { /* dispositivo não suporta ou permissão negada */ }
+    }
+
+    function aoVoltar() {
+      if (document.visibilityState === "visible") ativarWakeLock();
+    }
+
+    ativarWakeLock();
+    document.addEventListener("visibilitychange", aoVoltar);
+
+    return () => {
+      document.removeEventListener("visibilitychange", aoVoltar);
+      wakeLock?.release().catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     function aoSincronizar() {
       queryClient.invalidateQueries({ queryKey: ["bipagem-contagens", operacaoId] });
