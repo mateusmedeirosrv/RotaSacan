@@ -423,23 +423,38 @@ export function BipagemConsole({
     setCodigoInput(novoValor);
     if (!novoValor) return;
 
-    // Usa o regex configurado ou cai no padrão TBR (case-insensitive)
-    const regexEfetivo = regexValidacao ?? "^[Tt][Bb][Rr]\\d{9}$";
+    if (regexValidacao) {
+      // Código válido e completo: processa imediatamente
+      if (new RegExp(regexValidacao, "i").test(novoValor)) {
+        setCodigoInput("");
+        void processarCodigo(novoValor);
+        return;
+      }
 
-    if (new RegExp(regexEfetivo, "i").test(novoValor)) {
+      // Prefixo ou tamanho já inválido: erro imediato
+      const prefixo = prefixoLiteral(regexValidacao);
+      const maximo = comprimentoMaximo(regexValidacao, prefixo);
+      const invalido =
+        !prefixoAindaValido(prefixo.toUpperCase(), novoValor.toUpperCase()) ||
+        (maximo !== null && novoValor.length > maximo);
+      if (invalido) {
+        setCodigoInput("");
+        adicionarEventoSessao(novoValor, "erro");
+      }
+      return;
+    }
+
+    // Sem regex configurado: valida formato TBR diretamente (case-insensitive)
+    // Formato esperado: TBR + 9 dígitos = 12 caracteres
+    if (/^[Tt][Bb][Rr]\d{9}$/.test(novoValor)) {
       setCodigoInput("");
       void processarCodigo(novoValor);
       return;
     }
 
-    const prefixo = prefixoLiteral(regexEfetivo);
-    const maximo = comprimentoMaximo(regexEfetivo, prefixo);
-    // Comparação case-insensitive para o prefixo (ex.: "tbr" == "TBR")
-    const formatoJaInvalido =
-      !prefixoAindaValido(prefixo.toUpperCase(), novoValor.toUpperCase()) ||
-      (maximo !== null && novoValor.length > maximo);
-
-    if (formatoJaInvalido) {
+    const prefixoDigitado = novoValor.slice(0, Math.min(3, novoValor.length)).toUpperCase();
+    const prefixoEsperado = "TBR".slice(0, prefixoDigitado.length);
+    if (prefixoDigitado !== prefixoEsperado || novoValor.length > 12) {
       setCodigoInput("");
       adicionarEventoSessao(novoValor, "erro");
     }
