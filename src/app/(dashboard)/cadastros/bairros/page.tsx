@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { BairroFormDialog } from "./bairro-form";
 
 export default async function BairrosPage() {
@@ -22,13 +23,15 @@ export default async function BairrosPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Bairros</h1>
-        <BairroFormDialog
-          cidades={cidades ?? []}
-          trigger={<Button disabled={!cidades?.length}>Novo bairro</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Bairros"
+        action={
+          <BairroFormDialog
+            cidades={cidades ?? []}
+            trigger={<Button disabled={!cidades?.length}>Novo bairro</Button>}
+          />
+        }
+      />
 
       {!cidades?.length && (
         <p className="text-sm text-muted-foreground">

@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { TransportadoraFormDialog } from "./transportadora-form";
 
 export default async function TransportadorasPage() {
@@ -20,12 +21,14 @@ export default async function TransportadorasPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Transportadoras</h1>
-        <TransportadoraFormDialog
-          trigger={<Button>Nova transportadora</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Transportadoras"
+        action={
+          <TransportadoraFormDialog
+            trigger={<Button>Nova transportadora</Button>}
+          />
+        }
+      />
 
       <Table>
         <TableHeader>

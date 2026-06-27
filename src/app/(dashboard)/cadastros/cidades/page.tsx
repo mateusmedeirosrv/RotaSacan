@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { CidadeFormDialog } from "./cidade-form";
 
 export default async function CidadesPage() {
@@ -20,10 +21,10 @@ export default async function CidadesPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Cidades</h1>
-        <CidadeFormDialog trigger={<Button>Nova cidade</Button>} />
-      </div>
+      <PageHeader
+        title="Cidades"
+        action={<CidadeFormDialog trigger={<Button>Nova cidade</Button>} />}
+      />
 
       <Table>
         <TableHeader>

@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { GalpaoFormDialog } from "./galpao-form";
 
 export default async function GalpoesPage() {
@@ -22,13 +23,15 @@ export default async function GalpoesPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Galpões</h1>
-        <GalpaoFormDialog
-          cidades={cidades ?? []}
-          trigger={<Button disabled={!cidades?.length}>Novo galpão</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Galpões"
+        action={
+          <GalpaoFormDialog
+            cidades={cidades ?? []}
+            trigger={<Button disabled={!cidades?.length}>Novo galpão</Button>}
+          />
+        }
+      />
 
       {!cidades?.length && (
         <p className="text-sm text-muted-foreground">

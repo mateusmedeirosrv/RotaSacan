@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { RotaFormDialog } from "./rota-form";
 
 export default async function RotasPage() {
@@ -29,13 +30,15 @@ export default async function RotasPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Rotas</h1>
-        <RotaFormDialog
-          galpoes={galpoes ?? []}
-          trigger={<Button disabled={!galpoes?.length}>Nova rota</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Rotas"
+        action={
+          <RotaFormDialog
+            galpoes={galpoes ?? []}
+            trigger={<Button disabled={!galpoes?.length}>Nova rota</Button>}
+          />
+        }
+      />
 
       {!galpoes?.length && (
         <p className="text-sm text-muted-foreground">

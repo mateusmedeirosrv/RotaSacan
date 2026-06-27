@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { MotoristaFormDialog } from "./motorista-form";
 
 export default async function MotoristasPage() {
@@ -22,13 +23,15 @@ export default async function MotoristasPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Motoristas</h1>
-        <MotoristaFormDialog
-          galpoes={galpoes ?? []}
-          trigger={<Button disabled={!galpoes?.length}>Novo motorista</Button>}
-        />
-      </div>
+      <PageHeader
+        title="Motoristas"
+        action={
+          <MotoristaFormDialog
+            galpoes={galpoes ?? []}
+            trigger={<Button disabled={!galpoes?.length}>Novo motorista</Button>}
+          />
+        }
+      />
 
       {!galpoes?.length && (
         <p className="text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/guards";
+import { PageHeader } from "@/components/page-header";
 import { ConfiguracoesForm } from "./configuracoes-form";
 import { SenhaOverrideForm } from "./senha-override-form";
 
@@ -14,7 +15,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <main className="space-y-6 p-6">
-      <h1 className="text-xl font-semibold">Configurações</h1>
+      <PageHeader title="Configurações" />
 
       <div className="flex flex-wrap items-start gap-6">
         <ConfiguracoesForm valores={valores} />

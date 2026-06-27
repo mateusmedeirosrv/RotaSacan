@@ -54,21 +54,28 @@ export function DashboardNav({
   ];
 
   return (
-    <header className="border-b">
-      <nav className="flex items-center gap-4 px-6 py-3">
-        <Link href="/" className="font-heading text-sm font-semibold">
-          RotaScan
+    <header>
+      <nav
+        className="flex items-center gap-4 px-6 py-3"
+        style={{ backgroundColor: "var(--brand-navy)" }}
+      >
+        <Link
+          href="/"
+          className="font-heading text-sm font-bold tracking-wide text-white shrink-0"
+        >
+          Rota<span style={{ color: "var(--brand-orange)" }}>Scan</span>
         </Link>
 
         {links.length > 0 && (
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-1 text-sm overflow-x-auto">
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-muted-foreground transition-colors hover:text-foreground",
-                  pathname.startsWith(link.href) && "font-medium text-foreground"
+                  "whitespace-nowrap rounded px-3 py-1.5 text-white/55 transition-colors hover:text-white",
+                  pathname.startsWith(link.href) &&
+                    "font-semibold text-[--brand-orange]"
                 )}
               >
                 {link.label}
@@ -77,22 +84,30 @@ export function DashboardNav({
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3 shrink-0">
           {pendentes > 0 && (
-            <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-700">
+            <span className="rounded-full border border-yellow-500/40 bg-yellow-500/15 px-2 py-0.5 text-xs text-yellow-300">
               {pendentes} pendente{pendentes > 1 ? "s" : ""} de sincronização
             </span>
           )}
           {nome && (
-            <span className="text-sm text-muted-foreground">{nome}</span>
+            <span className="hidden text-sm text-white/45 sm:inline">{nome}</span>
           )}
           <form action={signOut}>
-            <Button type="submit" variant="ghost" size="sm">
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-white/55 hover:bg-white/10 hover:text-white"
+            >
               Sair
             </Button>
           </form>
         </div>
       </nav>
+
+      {/* Speed stripe — assinatura visual Amazon→Magalu */}
+      <div className="h-[2px] brand-stripe" />
     </header>
   );
 }

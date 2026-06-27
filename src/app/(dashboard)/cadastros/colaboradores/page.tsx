@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/page-header";
 import { ColaboradorFormDialog } from "./colaborador-form";
 
 const PAPEL_LABEL: Record<string, string> = {
@@ -28,15 +29,17 @@ export default async function ColaboradoresPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Colaboradores</h1>
-        <ColaboradorFormDialog
-          galpoes={galpoes ?? []}
-          trigger={
-            <Button disabled={!galpoes?.length}>Novo colaborador</Button>
-          }
-        />
-      </div>
+      <PageHeader
+        title="Colaboradores"
+        action={
+          <ColaboradorFormDialog
+            galpoes={galpoes ?? []}
+            trigger={
+              <Button disabled={!galpoes?.length}>Novo colaborador</Button>
+            }
+          />
+        }
+      />
 
       {!galpoes?.length && (
         <p className="text-sm text-muted-foreground">
